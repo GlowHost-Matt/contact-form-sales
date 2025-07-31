@@ -20,23 +20,87 @@
  *
  */
 
+// Always show errors for troubleshooting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+
 // Debug mode toggle - controlled by user selection
 $debug_mode = isset($_GET['debug']) && $_GET['debug'] === 'true';
 
-if ($debug_mode) {
-    // Debug mode: Show all errors
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-} else {
-    // Normal mode: Log errors but don't display
-    error_reporting(E_ALL);
-    ini_set('display_errors', 0);
-    ini_set('log_errors', 1);
-}
-
 // Make debug mode available globally
 global $debug_mode;
+
+/**
+ * Run system compatibility check immediately
+ */
+function runSystemCheck() {
+    $checks = [];
+
+    // PHP Version Check
+    $php_version = PHP_VERSION;
+    $php_ok = version_compare($php_version, '7.4.0', '>=') && version_compare($php_version, '8.3.0', '<=');
+    $checks['php_version'] = [
+        'name' => 'PHP Version',
+        'value' => $php_version,
+        'status' => $php_ok ? 'OK' : 'ERROR',
+        'message' => $php_ok ? 'Compatible' : 'Requires PHP 7.4 - 8.2 (current: ' . $php_version . ')'
+    ];
+
+    // Required Extensions
+    $required_extensions = ['curl', 'zip', 'json', 'session'];
+    foreach ($required_extensions as $ext) {
+        $loaded = extension_loaded($ext);
+        $checks["ext_{$ext}"] = [
+            'name' => "{$ext} Extension",
+            'value' => $loaded ? 'Loaded' : 'Missing',
+            'status' => $loaded ? 'OK' : 'ERROR',
+            'message' => $loaded ? 'Available' : 'Required extension missing'
+        ];
+    }
+
+    // Memory Limit
+    $memory_limit = ini_get('memory_limit');
+    $memory_ok = (int)$memory_limit >= 128 || $memory_limit === '-1';
+    $checks['memory_limit'] = [
+        'name' => 'Memory Limit',
+        'value' => $memory_limit,
+        'status' => $memory_ok ? 'OK' : 'WARNING',
+        'message' => $memory_ok ? 'Sufficient' : 'May need 128M+'
+    ];
+
+    // Write Permissions
+    $writable = is_writable(__DIR__);
+    $checks['write_permissions'] = [
+        'name' => 'Write Permissions',
+        'value' => $writable ? 'Writable' : 'Not Writable',
+        'status' => $writable ? 'OK' : 'ERROR',
+        'message' => $writable ? 'Directory is writable' : 'Cannot write to directory'
+    ];
+
+    // Session Support
+    $session_ok = function_exists('session_start');
+    $checks['session_support'] = [
+        'name' => 'Session Support',
+        'value' => $session_ok ? 'Available' : 'Missing',
+        'status' => $session_ok ? 'OK' : 'ERROR',
+        'message' => $session_ok ? 'Sessions supported' : 'Session functions missing'
+    ];
+
+    // Server Software
+    $server = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
+    $checks['server_software'] = [
+        'name' => 'Server Software',
+        'value' => $server,
+        'status' => 'INFO',
+        'message' => 'Server information'
+    ];
+
+    return $checks;
+}
+
+// Run system check immediately
+$system_checks = runSystemCheck();
 
 // Configuration - Define constants first
 define('INSTALLER_VERSION', '1.0');
@@ -562,9 +626,110 @@ function showInstallerInterface() {
             border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
             min-height: 600px;
+        }
+
+        .system-check-container {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 24px 32px;
+        }
+
+        .system-check-container h2 {
+            margin: 0 0 20px 0;
+            color: #1a202c;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .system-checks {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid;
+            background: white;
+        }
+
+        .check-item.ok {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .check-item.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .check-item.warning {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .check-item.info {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .check-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .check-details {
+            flex: 1;
+        }
+
+        .check-name {
+            font-weight: 600;
+            color: #1a202c;
+            font-size: 14px;
+        }
+
+        .check-value {
+            color: #4b5563;
+            font-size: 13px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .check-message {
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .system-summary {
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+
+        .summary-warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #d97706;
+        }
+
+        .summary-success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
         }
 
         .installer-header {
@@ -907,6 +1072,61 @@ function showInstallerInterface() {
                 <p>Professional One-Click Installer v<?php echo INSTALLER_VERSION; ?></p>
             </div>
 
+            <!-- System Compatibility Check -->
+            <div class="system-check-container">
+                <h2>🔍 System Compatibility Check</h2>
+                <div class="system-checks">
+                    <?php foreach ($system_checks as $check): ?>
+                        <div class="check-item <?php echo strtolower($check['status']); ?>">
+                            <div class="check-icon">
+                                <?php if ($check['status'] === 'OK'): ?>
+                                    ✅
+                                <?php elseif ($check['status'] === 'ERROR'): ?>
+                                    ❌
+                                <?php elseif ($check['status'] === 'WARNING'): ?>
+                                    ⚠️
+                                <?php else: ?>
+                                    ℹ️
+                                <?php endif; ?>
+                            </div>
+                            <div class="check-details">
+                                <div class="check-name"><?php echo htmlspecialchars($check['name']); ?></div>
+                                <div class="check-value"><?php echo htmlspecialchars($check['value']); ?></div>
+                                <div class="check-message"><?php echo htmlspecialchars($check['message']); ?></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php
+                $has_errors = false;
+                $has_warnings = false;
+                foreach ($system_checks as $check) {
+                    if ($check['status'] === 'ERROR') $has_errors = true;
+                    if ($check['status'] === 'WARNING') $has_warnings = true;
+                }
+                ?>
+
+                <div class="system-summary">
+                    <?php if ($has_errors): ?>
+                        <div class="summary-error">
+                            <strong>❌ Installation Blocked</strong><br>
+                            Critical system requirements are not met. Please fix the errors above before proceeding.
+                        </div>
+                    <?php elseif ($has_warnings): ?>
+                        <div class="summary-warning">
+                            <strong>⚠️ Warnings Detected</strong><br>
+                            Installation can proceed but some warnings should be addressed.
+                        </div>
+                    <?php else: ?>
+                        <div class="summary-success">
+                            <strong>✅ System Compatible</strong><br>
+                            All requirements are met. Ready to install!
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="installer-content">
                 <?php if ($already_installed): ?>
                     <div class="already-installed">
@@ -991,10 +1211,24 @@ function showInstallerInterface() {
 
                         <div class="requirements-check" id="requirements-check"></div>
 
-                        <button class="install-button" id="install-button" onclick="startInstallation()">
+                        <?php
+                        $can_install = true;
+                        foreach ($system_checks as $check) {
+                            if ($check['status'] === 'ERROR') {
+                                $can_install = false;
+                                break;
+                            }
+                        }
+                        ?>
+
+                        <button class="install-button" id="install-button"
+                                onclick="startInstallation()"
+                                <?php echo $can_install ? '' : 'disabled'; ?>>
                             <span class="button-content">
-                                <span class="button-icon">🚀</span>
-                                <span class="button-text">Install Contact Form System</span>
+                                <span class="button-icon"><?php echo $can_install ? '🚀' : '❌'; ?></span>
+                                <span class="button-text">
+                                    <?php echo $can_install ? 'Install Contact Form System' : 'Cannot Install - Fix Errors Above'; ?>
+                                </span>
                             </span>
                             <span class="button-loader" style="display: none;">
                                 <span class="spinner"></span>
@@ -1016,6 +1250,45 @@ function showInstallerInterface() {
                         </div>
 
                         <div class="status-message" id="status-message"></div>
+                    </div>
+
+                    <!-- Additional Debug Information -->
+                    <div class="debug-section" style="margin-top: 20px;">
+                        <details>
+                            <summary style="cursor: pointer; font-weight: 600; color: #4a5568;">
+                                🔧 Advanced Debug Information (Click to expand)
+                            </summary>
+                            <div style="margin-top: 15px; padding: 15px; background: #f7fafc; border-radius: 8px; font-family: monospace; font-size: 12px;">
+                                <strong>PHP Configuration:</strong><br>
+                                PHP Version: <?php echo PHP_VERSION; ?><br>
+                                Server API: <?php echo php_sapi_name(); ?><br>
+                                Operating System: <?php echo PHP_OS; ?><br>
+                                Memory Limit: <?php echo ini_get('memory_limit'); ?><br>
+                                Max Execution Time: <?php echo ini_get('max_execution_time'); ?>s<br>
+                                Upload Max Filesize: <?php echo ini_get('upload_max_filesize'); ?><br>
+                                Post Max Size: <?php echo ini_get('post_max_size'); ?><br>
+                                <br>
+                                <strong>Server Information:</strong><br>
+                                Server Software: <?php echo $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'; ?><br>
+                                Document Root: <?php echo $_SERVER['DOCUMENT_ROOT'] ?? 'Unknown'; ?><br>
+                                Current Directory: <?php echo __DIR__; ?><br>
+                                Script Filename: <?php echo $_SERVER['SCRIPT_FILENAME'] ?? 'Unknown'; ?><br>
+                                <br>
+                                <strong>Loaded Extensions:</strong><br>
+                                <?php
+                                $extensions = get_loaded_extensions();
+                                $key_extensions = array_intersect($extensions, ['curl', 'zip', 'json', 'session', 'pdo', 'pdo_mysql', 'openssl', 'mbstring']);
+                                echo implode(', ', $key_extensions);
+                                ?>
+                                <br>
+                                <br>
+                                <strong>Error Information:</strong><br>
+                                Error Reporting: <?php echo error_reporting(); ?><br>
+                                Display Errors: <?php echo ini_get('display_errors') ? 'On' : 'Off'; ?><br>
+                                Log Errors: <?php echo ini_get('log_errors') ? 'On' : 'Off'; ?><br>
+                                Error Log: <?php echo ini_get('error_log') ?: 'Default'; ?><br>
+                            </div>
+                        </details>
                     </div>
                 <?php endif; ?>
             </div>
