@@ -93,8 +93,11 @@ function runSystemCheck() {
     return $checks;
 }
 
-// Handle AJAX installation requests
-if ($_GET['action'] ?? '' === 'install' || $_POST['action'] ?? '' === 'install') {
+// Handle AJAX installation requests - FIXED: Proper array key checking  
+$get_action = $_GET['action'] ?? '';
+$post_action = $_POST['action'] ?? '';
+
+if ($get_action === 'install' || $post_action === 'install') {
     header('Content-Type: application/json');
 
     // Security check
