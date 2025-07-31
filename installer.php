@@ -99,9 +99,6 @@ function runSystemCheck() {
     return $checks;
 }
 
-// Run system check immediately
-$system_checks = runSystemCheck();
-
 // Configuration - Define constants first
 define('INSTALLER_VERSION', '1.0');
 define('PACKAGE_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
@@ -577,6 +574,22 @@ function showInstallerInterface() {
         // Check if already installed
         $already_installed = file_exists(__DIR__ . '/.installer_complete') || file_exists(__DIR__ . '/install/index.php');
 
+        // Run system compatibility check
+        try {
+            $system_checks = runSystemCheck();
+        } catch (Exception $checkError) {
+            logMessage('ERROR in runSystemCheck: ' . $checkError->getMessage());
+            // Fallback system check data
+            $system_checks = [
+                'error' => [
+                    'name' => 'System Check Error',
+                    'value' => 'Failed to run compatibility check',
+                    'status' => 'ERROR',
+                    'message' => 'Error running system check: ' . $checkError->getMessage()
+                ]
+            ];
+        }
+
         // Log successful interface load
         logMessage('Installer interface loaded successfully');
 
@@ -585,6 +598,8 @@ function showInstallerInterface() {
 
         // Fallback for session issues
         $already_installed = false;
+        $system_checks = []; // Empty array fallback to prevent undefined variable error
+
         if (!isset($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = 'fallback_' . md5(time() . rand());
         }
@@ -1076,7 +1091,8 @@ function showInstallerInterface() {
             <div class="system-check-container">
                 <h2>🔍 System Compatibility Check</h2>
                 <div class="system-checks">
-                    <?php foreach ($system_checks as $check): ?>
+                    <?php if (!empty($system_checks) && is_array($system_checks)): ?>
+                        <?php foreach ($system_checks as $check): ?>
                         <div class="check-item <?php echo strtolower($check['status']); ?>">
                             <div class="check-icon">
                                 <?php if ($check['status'] === 'OK'): ?>
@@ -1095,15 +1111,30 @@ function showInstallerInterface() {
                                 <div class="check-message"><?php echo htmlspecialchars($check['message']); ?></div>
                             </div>
                         </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="check-item error">
+                            <div class="check-icon">❌</div>
+                            <div class="check-details">
+                                <div class="check-name">System Check Failed</div>
+                                <div class="check-value">Unable to run compatibility check</div>
+                                <div class="check-message">Please check PHP error logs for details</div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <?php
                 $has_errors = false;
                 $has_warnings = false;
-                foreach ($system_checks as $check) {
-                    if ($check['status'] === 'ERROR') $has_errors = true;
-                    if ($check['status'] === 'WARNING') $has_warnings = true;
+                if (!empty($system_checks) && is_array($system_checks)) {
+                    foreach ($system_checks as $check) {
+                        if ($check['status'] === 'ERROR') $has_errors = true;
+                        if ($check['status'] === 'WARNING') $has_warnings = true;
+                    }
+                } else {
+                    // If system checks failed, consider it an error
+                    $has_errors = true;
                 }
                 ?>
 
@@ -1213,11 +1244,16 @@ function showInstallerInterface() {
 
                         <?php
                         $can_install = true;
-                        foreach ($system_checks as $check) {
-                            if ($check['status'] === 'ERROR') {
-                                $can_install = false;
-                                break;
+                        if (!empty($system_checks) && is_array($system_checks)) {
+                            foreach ($system_checks as $check) {
+                                if ($check['status'] === 'ERROR') {
+                                    $can_install = false;
+                                    break;
+                                }
                             }
+                        } else {
+                            // If system checks failed, don't allow installation
+                            $can_install = false;
                         }
                         ?>
 
