@@ -665,6 +665,54 @@ function showInstallerInterface() {
             transform: none;
         }
 
+        .install-button {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button-content,
+        .button-loader {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .button-loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: inherit;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .install-button.loading .button-content {
+            opacity: 0;
+        }
+
+        .install-button.loading .button-loader {
+            display: flex !important;
+        }
+
+        .install-button.loading {
+            pointer-events: none;
+        }
+
         .progress-container {
             margin: 24px 0;
             display: none;
@@ -944,7 +992,14 @@ function showInstallerInterface() {
                         <div class="requirements-check" id="requirements-check"></div>
 
                         <button class="install-button" id="install-button" onclick="startInstallation()">
-                            🚀 Install Contact Form System
+                            <span class="button-content">
+                                <span class="button-icon">🚀</span>
+                                <span class="button-text">Install Contact Form System</span>
+                            </span>
+                            <span class="button-loader" style="display: none;">
+                                <span class="spinner"></span>
+                                <span class="loading-text">Installing...</span>
+                            </span>
                         </button>
 
                         <div class="progress-container" id="progress-container">
@@ -981,15 +1036,60 @@ function showInstallerInterface() {
         // Debug mode toggle function
         function toggleDebugMode() {
             const select = document.getElementById('debug-mode');
+            const debugInfo = document.querySelector('.debug-info');
             const currentUrl = new URL(window.location);
 
             if (select.value === 'debug') {
+                // Enable debug mode
                 currentUrl.searchParams.set('debug', 'true');
+                if (debugInfo) {
+                    debugInfo.style.display = 'block';
+                }
+                // Show immediate debug info without page reload
+                showDebugInfo();
             } else {
+                // Disable debug mode
                 currentUrl.searchParams.delete('debug');
+                if (debugInfo) {
+                    debugInfo.style.display = 'none';
+                }
+                hideDebugInfo();
             }
 
-            window.location.href = currentUrl.toString();
+            // Update URL without reload for immediate feedback
+            window.history.replaceState({}, '', currentUrl.toString());
+        }
+
+        function showDebugInfo() {
+            // Show debug info immediately
+            const debugContainer = document.querySelector('.debug-info');
+            if (!debugContainer) {
+                const installSection = document.querySelector('.install-section');
+                const debugDiv = document.createElement('div');
+                debugDiv.className = 'debug-info';
+                debugDiv.innerHTML = `
+                    <h3>🔍 Debug Information</h3>
+                    <div class="debug-grid">
+                        <div class="debug-item"><strong>User Agent:</strong> ${navigator.userAgent}</div>
+                        <div class="debug-item"><strong>Screen:</strong> ${screen.width}x${screen.height}</div>
+                        <div class="debug-item"><strong>Language:</strong> ${navigator.language}</div>
+                        <div class="debug-item"><strong>Online:</strong> ${navigator.onLine ? '✅ Yes' : '❌ No'}</div>
+                        <div class="debug-item"><strong>Cookies:</strong> ${navigator.cookieEnabled ? '✅ Enabled' : '❌ Disabled'}</div>
+                        <div class="debug-item"><strong>Local Storage:</strong> ${typeof(Storage) !== "undefined" ? '✅ Available' : '❌ Not Available'}</div>
+                    </div>
+                `;
+                const requirementsCheck = document.getElementById('requirements-check');
+                installSection.insertBefore(debugDiv, requirementsCheck);
+            } else {
+                debugContainer.style.display = 'block';
+            }
+        }
+
+        function hideDebugInfo() {
+            const debugContainer = document.querySelector('.debug-info');
+            if (debugContainer) {
+                debugContainer.style.display = 'none';
+            }
         }
 
         let currentStep = 0;
@@ -1000,8 +1100,9 @@ function showInstallerInterface() {
             const button = document.getElementById('install-button');
             const progressContainer = document.getElementById('progress-container');
 
+            // Show loading state
+            button.classList.add('loading');
             button.disabled = true;
-            button.textContent = 'Installing...';
             progressContainer.style.display = 'block';
 
             try {
@@ -1019,15 +1120,23 @@ function showInstallerInterface() {
 
             } catch (error) {
                 showError('Installation failed: ' + error.message);
+                button.classList.remove('loading');
                 button.disabled = false;
-                button.textContent = '🚀 Retry Installation';
             }
         }
 
         async function runInstallationStep(step) {
             try {
-                // Update UI
+                // Update UI with step feedback
                 document.getElementById('step-' + step).classList.add('active');
+
+                // Show current step status
+                const statusMessage = document.getElementById('status-message');
+                if (statusMessage) {
+                    statusMessage.className = 'status-message';
+                    statusMessage.style.display = 'block';
+                    statusMessage.textContent = `${stepNames[currentStep]}...`;
+                }
 
                 // Add debug parameter if in debug mode
                 const debugParam = debugMode ? '&debug=true' : '';
@@ -1121,6 +1230,36 @@ function showInstallerInterface() {
             container.innerHTML = html;
             container.style.display = 'block';
         }
+
+        // Initialize the installer when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up debug mode based on current URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const isDebugMode = urlParams.get('debug') === 'true';
+            const select = document.getElementById('debug-mode');
+
+            if (select) {
+                select.value = isDebugMode ? 'debug' : 'normal';
+                if (isDebugMode) {
+                    showDebugInfo();
+                }
+            }
+
+            // Add loading state protection
+            const button = document.getElementById('install-button');
+            if (button) {
+                // Prevent double-clicks during installation
+                button.addEventListener('click', function(e) {
+                    if (this.classList.contains('loading')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                });
+            }
+
+            console.log('🚀 Installer initialized - Debug mode:', isDebugMode);
+        });
         </script>
     </body>
     </html>
