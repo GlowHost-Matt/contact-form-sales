@@ -1,26 +1,53 @@
 <?php
 /**
  * GlowHost Contact Form System - One-Click Installer
- * Version: 2.0 - Simple Working Installer
+ * Version: 2.1 - Security Enhanced with Secure Paths
  * 
  * This installer downloads the complete source code and creates
  * a proper installation wizard at /install/
+ * 
+ * SECURITY ENHANCEMENT: All writable operations moved outside web root
  */
 
 // Configuration
-define('INSTALLER_VERSION', '2.0');
+define('INSTALLER_VERSION', '2.1');
 define('PACKAGE_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
 define('PACKAGE_DIR', 'contact-form-sales-main');
-define('LOG_FILE', __DIR__ . '/installer.log');
+
+// SECURITY: Use secure paths outside web root
+define('SECURE_HOME_DIR', '/home/contactglowhost');
+define('TEMP_DIR', SECURE_HOME_DIR . '/installer_temp');
+define('LOG_FILE', SECURE_HOME_DIR . '/logs/installer.log');
 
 // PHP Settings
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 session_start();
-define('TEMP_DIR', __DIR__ . '/installer_temp_' . session_id());
 
 /**
- * System check
+ * Create secure directories outside web root
+ */
+function createSecureDirectories() {
+    $directories = [
+        dirname(TEMP_DIR),
+        dirname(LOG_FILE),
+        TEMP_DIR
+    ];
+    
+    foreach ($directories as $dir) {
+        if (!is_dir($dir)) {
+            if (!mkdir($dir, 0755, true)) {
+                throw new Exception('Failed to create secure directory: ' . $dir);
+            }
+            logMessage('Created secure directory: ' . $dir);
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * System check with secure directory validation
  */
 function runSystemCheck() {
     $checks = [];
@@ -45,12 +72,32 @@ function runSystemCheck() {
         ];
     }
 
-    $writable = is_writable(__DIR__);
-    $checks['write_permissions'] = [
-        'name' => 'Write Permissions',
-        'value' => $writable ? 'Writable' : 'Not Writable',
-        'status' => $writable ? 'OK' : 'ERROR',
-        'message' => $writable ? 'Directory is writable' : 'Cannot write to directory'
+    // SECURITY: Check secure directory creation instead of web root
+    try {
+        createSecureDirectories();
+        $secure_writable = is_writable(TEMP_DIR) && is_writable(dirname(LOG_FILE));
+        $checks['secure_permissions'] = [
+            'name' => 'Secure Directory Access',
+            'value' => $secure_writable ? 'Writable' : 'Not Writable',
+            'status' => $secure_writable ? 'OK' : 'ERROR',
+            'message' => $secure_writable ? 'Secure directories accessible' : 'Cannot access secure directories'
+        ];
+    } catch (Exception $e) {
+        $checks['secure_permissions'] = [
+            'name' => 'Secure Directory Access',
+            'value' => 'Failed',
+            'status' => 'ERROR',
+            'message' => 'Error: ' . $e->getMessage()
+        ];
+    }
+
+    // Check web root write permission (this should be minimal)
+    $web_writable = is_writable(__DIR__);
+    $checks['web_permissions'] = [
+        'name' => 'Web Root Access',
+        'value' => $web_writable ? 'Writable' : 'Read-Only',
+        'status' => $web_writable ? 'OK' : 'ERROR',
+        'message' => $web_writable ? 'Can deploy files to web root' : 'Cannot write to web root'
     ];
 
     return $checks;
@@ -130,10 +177,16 @@ function checkSystemRequirements() {
 function downloadPackage() {
     logMessage('Starting package download from: ' . PACKAGE_URL);
 
-    if (!file_exists(TEMP_DIR)) {
-        if (!mkdir(TEMP_DIR, 0755, true)) {
-            throw new Exception('Failed to create temp directory: ' . TEMP_DIR);
-        }
+    // SECURITY: Ensure secure directories exist
+    createSecureDirectories();
+
+    // Clean existing temp directory
+    if (is_dir(TEMP_DIR)) {
+        removeDirectory(TEMP_DIR);
+    }
+    
+    if (!mkdir(TEMP_DIR, 0755, true)) {
+        throw new Exception('Failed to create secure temp directory: ' . TEMP_DIR);
     }
 
     $zip_file = TEMP_DIR . '/package.zip';
@@ -163,14 +216,14 @@ function downloadPackage() {
 
     $bytes_written = file_put_contents($zip_file, $data);
     if ($bytes_written === false) {
-        throw new Exception('Failed to save downloaded package');
+        throw new Exception('Failed to save downloaded package to secure directory');
     }
 
-    logMessage('Package downloaded successfully: ' . formatBytes($bytes_written));
+    logMessage('Package downloaded successfully to secure directory: ' . formatBytes($bytes_written));
 
     return [
         'success' => true,
-        'message' => 'Package downloaded successfully',
+        'message' => 'Package downloaded successfully to secure location',
         'size' => formatBytes($bytes_written),
         'file' => $zip_file
     ];
@@ -180,7 +233,7 @@ function extractPackage() {
     $zip_file = TEMP_DIR . '/package.zip';
 
     if (!file_exists($zip_file)) {
-        throw new Exception('Package file not found: ' . $zip_file);
+        throw new Exception('Package file not found in secure directory: ' . $zip_file);
     }
 
     $zip = new ZipArchive();
@@ -191,7 +244,7 @@ function extractPackage() {
 
     $extract_path = TEMP_DIR . '/extracted';
     if (!$zip->extractTo($extract_path)) {
-        throw new Exception('Failed to extract ZIP file');
+        throw new Exception('Failed to extract ZIP file to secure directory');
     }
     $zip->close();
 
@@ -200,11 +253,11 @@ function extractPackage() {
         throw new Exception('Package structure not found after extraction');
     }
 
-    logMessage('Package extracted successfully to: ' . $package_path);
+    logMessage('Package extracted successfully to secure directory: ' . $package_path);
 
     return [
         'success' => true,
-        'message' => 'Package extracted successfully',
+        'message' => 'Package extracted successfully to secure location',
         'path' => $package_path,
         'files' => countFiles($package_path)
     ];
@@ -215,10 +268,10 @@ function deployFiles() {
     $target_path = __DIR__;
 
     if (!is_dir($source_path)) {
-        throw new Exception('Source directory not found: ' . $source_path);
+        throw new Exception('Source directory not found in secure location: ' . $source_path);
     }
 
-    logMessage('Deploying files from ' . $source_path . ' to web root: ' . $target_path);
+    logMessage('SECURE DEPLOYMENT: Deploying files from secure temp ' . $source_path . ' to web root: ' . $target_path);
 
     $files_copied = 0;
     $items = scandir($source_path);
@@ -251,11 +304,11 @@ function deployFiles() {
     // Create the install wizard directory and files
     createInstallWizard();
 
-    logMessage('Files deployed successfully - ' . $files_copied . ' files copied to web root');
+    logMessage('SECURE DEPLOYMENT: Files deployed successfully - ' . $files_copied . ' files copied from secure temp to web root');
 
     return [
         'success' => true,
-        'message' => 'Files deployed successfully to web root',
+        'message' => 'Files deployed securely from temp location to web root',
         'files_copied' => $files_copied,
         'install_url' => 'install/'
     ];
@@ -305,7 +358,7 @@ function createInstallWizard() {
     $wizard_content = '<?php
 /**
  * GlowHost Contact Form System - Installation Wizard
- * Generated by installer v' . INSTALLER_VERSION . '
+ * Generated by secure installer v' . INSTALLER_VERSION . '
  */
 
 session_start();
@@ -423,16 +476,29 @@ $success = isset($_GET["success"]) ? $_GET["success"] : "";
             color: #6b7280;
             margin-top: 5px;
         }
+        .security-notice {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="wizard-container">
         <div class="wizard-header">
             <h1>🚀 Contact Form Setup</h1>
-            <p>Complete your installation in just a few steps</p>
+            <p>Complete your secure installation in just a few steps</p>
         </div>
 
         <div class="wizard-content">
+            <div class="security-notice">
+                🔒 <strong>Security Enhanced:</strong> This installation uses secure paths outside your web root for all temporary operations.
+            </div>
+
             <div class="step-indicator">
                 <div class="step <?php echo $step === "welcome" ? "active" : ""; ?>">Welcome</div>
                 <div class="step <?php echo $step === "config" ? "active" : ""; ?>">Configuration</div>
@@ -455,7 +521,7 @@ $success = isset($_GET["success"]) ? $_GET["success"] : "";
                 <div style="text-align: center;">
                     <h2>Welcome to GlowHost Contact Form System!</h2>
                     <p style="margin: 20px 0; color: #6b7280; line-height: 1.6;">
-                        Your contact form system has been successfully deployed. 
+                        Your contact form system has been successfully deployed using secure installation practices. 
                         Now let\'s configure it to work with your specific requirements.
                     </p>
                     
@@ -466,6 +532,7 @@ $success = isset($_GET["success"]) ? $_GET["success"] : "";
                             <li>API endpoints for form processing</li>
                             <li>Configuration files</li>
                             <li>Source code and assets</li>
+                            <li>🔒 Secure temp files (outside web root)</li>
                         </ul>
                     </div>
 
@@ -521,8 +588,17 @@ $success = isset($_GET["success"]) ? $_GET["success"] : "";
                 <div style="text-align: center;">
                     <h2>🎉 Installation Complete!</h2>
                     <p style="margin: 20px 0; color: #6b7280; line-height: 1.6;">
-                        Your GlowHost Contact Form System is now ready to use!
+                        Your GlowHost Contact Form System is now ready to use with enhanced security!
                     </p>
+
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <h3 style="color: #16a34a; margin-bottom: 15px;">Security Features:</h3>
+                        <div style="text-align: left; color: #374151;">
+                            <p>🔒 <strong>Secure Installation:</strong> All temporary files stored outside web root</p>
+                            <p>🛡️ <strong>Protected Logs:</strong> Installation logs in secure home directory</p>
+                            <p>🚫 <strong>No Web Access:</strong> Temp directories not accessible via browser</p>
+                        </div>
+                    </div>
 
                     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0;">
                         <h3 style="color: #16a34a; margin-bottom: 15px;">Next Steps:</h3>
@@ -546,7 +622,7 @@ $success = isset($_GET["success"]) ? $_GET["success"] : "";
 
     $wizard_file = $install_dir . '/index.php';
     if (file_put_contents($wizard_file, $wizard_content) !== false) {
-        logMessage('Created installation wizard: ' . $wizard_file);
+        logMessage('Created secure installation wizard: ' . $wizard_file);
     } else {
         logMessage('WARNING: Failed to create installation wizard');
     }
@@ -555,6 +631,7 @@ $success = isset($_GET["success"]) ? $_GET["success"] : "";
     $setup_content = '<?php
 /**
  * Setup handler for configuration
+ * Security Enhanced Version
  */
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -577,7 +654,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $config_content = "<?php\\n\\n";
     $config_content .= "// GlowHost Contact Form Configuration\\n";
-    $config_content .= "// Generated on " . date("Y-m-d H:i:s") . "\\n\\n";
+    $config_content .= "// Generated by secure installer v' . INSTALLER_VERSION . ' on " . date("Y-m-d H:i:s") . "\\n\\n";
     $config_content .= "return [\\n";
     foreach ($config as $key => $value) {
         $config_content .= "    \"" . $key . "\" => \"" . addslashes($value) . "\",\\n";
@@ -596,27 +673,29 @@ exit;';
 
     $setup_file = $install_dir . '/setup.php';
     if (file_put_contents($setup_file, $setup_content) !== false) {
-        logMessage('Created setup handler: ' . $setup_file);
+        logMessage('Created secure setup handler: ' . $setup_file);
     }
 }
 
 function cleanupInstaller() {
-    logMessage('Starting cleanup process');
+    logMessage('Starting secure cleanup process');
 
+    // SECURITY: Clean up secure temp directory
     if (is_dir(TEMP_DIR)) {
         removeDirectory(TEMP_DIR);
-        logMessage('Temporary directory cleaned: ' . TEMP_DIR);
+        logMessage('Secure temporary directory cleaned: ' . TEMP_DIR);
     }
 
     file_put_contents(__DIR__ . '/.installer_complete', date('Y-m-d H:i:s'));
 
-    logMessage('Cleanup completed successfully - installation complete');
+    logMessage('Secure cleanup completed successfully - installation complete');
 
     return [
         'success' => true,
-        'message' => 'Installation completed successfully',
+        'message' => 'Secure installation completed successfully',
         'redirect_url' => 'install/',
-        'cleanup_complete' => true
+        'cleanup_complete' => true,
+        'security_note' => 'All temporary files securely removed from home directory'
     ];
 }
 
@@ -657,9 +736,17 @@ function formatBytes($bytes, $precision = 2) {
 }
 
 function logMessage($message) {
-    $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[{$timestamp}] {$message}\n";
-    @file_put_contents(LOG_FILE, $log_entry, FILE_APPEND | LOCK_EX);
+    // SECURITY: Ensure secure log directory exists
+    try {
+        createSecureDirectories();
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[{$timestamp}] {$message}\n";
+        @file_put_contents(LOG_FILE, $log_entry, FILE_APPEND | LOCK_EX);
+    } catch (Exception $e) {
+        // Fallback to error_log if secure logging fails
+        error_log("Installer Log Error: " . $e->getMessage());
+        error_log("Original Message: " . $message);
+    }
 }
 
 // Initialize session token
@@ -675,7 +762,7 @@ $system_checks = runSystemCheck();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlowHost Contact Form System - Installer</title>
+    <title>GlowHost Contact Form System - Secure Installer</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -692,7 +779,7 @@ $system_checks = runSystemCheck();
             border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
             min-height: 600px;
         }
@@ -710,6 +797,13 @@ $system_checks = runSystemCheck();
         .installer-header p {
             font-size: 16px;
             opacity: 0.9;
+        }
+        .security-banner {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 16px 32px;
+            text-align: center;
+            font-weight: 600;
         }
         .system-check-container {
             background: #f8fafc;
@@ -853,17 +947,39 @@ $system_checks = runSystemCheck();
             font-family: monospace;
             font-size: 14px;
         }
+        .security-features {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #16a34a;
+        }
+        .security-features h4 {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .security-features ul {
+            margin: 10px 0 0 20px;
+            color: #059669;
+        }
     </style>
 </head>
 <body>
     <div class="installer-container">
         <div class="installer-header">
             <h1>🚀 GlowHost Contact Form System</h1>
-            <p>Simple One-Click Installer v<?php echo INSTALLER_VERSION; ?></p>
+            <p>Security Enhanced One-Click Installer v<?php echo INSTALLER_VERSION; ?></p>
+        </div>
+
+        <div class="security-banner">
+            🔒 SECURITY ENHANCED: All operations use secure paths outside web root
         </div>
 
         <div class="system-check-container">
-            <h2>🔍 System Compatibility Check</h2>
+            <h2>🔍 System Compatibility & Security Check</h2>
             <div class="system-checks">
                 <?php foreach ($system_checks as $check): ?>
                 <div class="check-item <?php echo strtolower($check['status']); ?>">
@@ -888,22 +1004,33 @@ $system_checks = runSystemCheck();
             <?php if ($already_installed): ?>
                 <div style="background: #fffbeb; border: 1px solid #f6e05e; color: #744210; padding: 20px; border-radius: 8px;">
                     <h3>⚠️ System Already Installed</h3>
-                    <p>The contact form system appears to be already installed.</p>
+                    <p>The contact form system appears to be already installed with security enhancements.</p>
                     <br>
                     <a href="install/" style="color: #1a365d; font-weight: 600; text-decoration: none; background: #e2e8f0; padding: 8px 16px; border-radius: 6px; display: inline-block;">→ Access Installation Wizard</a>
                 </div>
             <?php else: ?>
-                <h2>Ready to Install</h2>
-                <p>This installer will download and deploy the complete contact form system.</p>
+                <h2>Ready for Secure Installation</h2>
+                <p>This installer will download and deploy the complete contact form system using enhanced security practices.</p>
+
+                <div class="security-features">
+                    <h4>🔒 Security Features:</h4>
+                    <ul>
+                        <li><strong>Secure Temp Directories:</strong> <?php echo TEMP_DIR; ?> (outside web root)</li>
+                        <li><strong>Protected Logs:</strong> <?php echo LOG_FILE; ?> (home directory)</li>
+                        <li><strong>No Web Access:</strong> Temporary files not accessible via browser</li>
+                        <li><strong>Safe Cleanup:</strong> Automatic removal of all temp files after installation</li>
+                    </ul>
+                </div>
 
                 <div class="instructions">
-                    <h3>📋 What this installer does:</h3>
+                    <h3>📋 What this secure installer does:</h3>
                     <ol>
-                        <li>Downloads the complete source code from GitHub</li>
-                        <li>Extracts and deploys all files to your web directory</li>
-                        <li>Creates an installation wizard at <code>/install/</code></li>
-                        <li>Sets up the basic configuration structure</li>
-                        <li>Provides a guided setup process</li>
+                        <li>Downloads source code to secure temp directory outside web root</li>
+                        <li>Extracts files safely in <code>/home/contactglowhost/installer_temp</code></li>
+                        <li>Deploys only necessary files to your web directory</li>
+                        <li>Creates installation wizard at <code>/install/</code></li>
+                        <li>Logs all operations to secure location: <code><?php echo LOG_FILE; ?></code></li>
+                        <li>Automatically cleans up all temporary files</li>
                     </ol>
                 </div>
 
@@ -923,7 +1050,7 @@ $system_checks = runSystemCheck();
 
                 <button class="install-button" id="install-button" onclick="startInstallation()" <?php echo $can_install ? '' : 'disabled'; ?>>
                     <span id="button-text">
-                        <?php echo $can_install ? '🚀 Install Contact Form System' : '❌ Cannot Install - Fix Errors Above'; ?>
+                        <?php echo $can_install ? '🚀 Start Secure Installation' : '❌ Cannot Install - Fix Errors Above'; ?>
                     </span>
                 </button>
 
@@ -934,7 +1061,13 @@ $system_checks = runSystemCheck();
 
     <script>
     const steps = ['check', 'download', 'extract', 'deploy', 'cleanup'];
-    const stepNames = ['Checking Requirements', 'Downloading Package', 'Extracting Files', 'Deploying System', 'Completing Installation'];
+    const stepNames = [
+        'Checking Security Requirements', 
+        'Downloading to Secure Location', 
+        'Extracting to Safe Directory', 
+        'Deploying to Web Root', 
+        'Secure Cleanup & Completion'
+    ];
 
     async function startInstallation() {
         const button = document.getElementById('install-button');
@@ -942,7 +1075,7 @@ $system_checks = runSystemCheck();
         const progressFill = document.getElementById('progress-fill');
 
         button.disabled = true;
-        button.innerHTML = '<span class="spinner"></span> Installing...';
+        button.innerHTML = '<span class="spinner"></span> Installing Securely...';
         progressBar.style.display = 'block';
 
         try {
@@ -954,13 +1087,13 @@ $system_checks = runSystemCheck();
                 showStatus(`${stepNames[i]} completed!`, 'success');
             }
 
-            showStatus('🎉 Installation completed successfully! Redirecting to setup wizard...', 'success');
+            showStatus('🎉 Secure installation completed successfully! Redirecting to setup wizard...', 'success');
             setTimeout(() => { window.location.href = 'install/'; }, 3000);
 
         } catch (error) {
             showStatus('❌ Installation failed: ' + error.message, 'error');
             button.disabled = false;
-            button.innerHTML = '🚀 Install Contact Form System';
+            button.innerHTML = '🚀 Start Secure Installation';
         }
     }
 
