@@ -11,6 +11,11 @@ define('PACKAGE_DIR', 'contact-form-sales-main');
 define('LOG_FILE', __DIR__ . '/installer.log');
 define('TESTING_MODE', true);
 
+// Self-update configuration
+define('INSTALLER_GITHUB_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/installer.php');
+define('BACKUP_FILE', __DIR__ . '/installer.php.backup');
+define('UPDATE_LOG_FILE', __DIR__ . '/installer_updates.log');
+
 // PHP Settings
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -195,6 +200,191 @@ function comprehensiveCleanup() {
 }
 
 /**
+ * SELF-UPDATE FUNCTIONS
+ */
+function checkForUpdates() {
+    logUpdateMessage('Checking for installer updates...');
+
+    try {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, INSTALLER_GITHUB_URL);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'GlowHost-Contact-Form-Installer/' . INSTALLER_VERSION);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+        $remote_content = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            throw new Exception('Failed to fetch remote installer: ' . $error);
+        }
+
+        if ($http_code !== 200) {
+            throw new Exception('HTTP error: ' . $http_code);
+        }
+
+        if (!$remote_content) {
+            throw new Exception('No content received from remote server');
+        }
+
+        // Extract version from remote file
+        preg_match("/define\('INSTALLER_VERSION',\s*'([^']+)'\)/", $remote_content, $matches);
+        $remote_version = $matches[1] ?? 'unknown';
+
+        $current_version = INSTALLER_VERSION;
+        $update_available = version_compare($remote_version, $current_version, '>');
+
+        return [
+            'success' => true,
+            'current_version' => $current_version,
+            'remote_version' => $remote_version,
+            'update_available' => $update_available,
+            'remote_content' => $remote_content
+        ];
+
+    } catch (Exception $e) {
+        logUpdateMessage('Error checking for updates: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+function updateInstaller() {
+    logUpdateMessage('Starting installer self-update process...');
+
+    try {
+        // Check for updates first
+        $update_check = checkForUpdates();
+        if (!$update_check['success']) {
+            throw new Exception('Update check failed: ' . $update_check['error']);
+        }
+
+        if (!$update_check['update_available']) {
+            return [
+                'success' => true,
+                'message' => 'Already running the latest version (' . $update_check['current_version'] . ')',
+                'updated' => false
+            ];
+        }
+
+        $remote_content = $update_check['remote_content'];
+        $new_version = $update_check['remote_version'];
+        $current_version = $update_check['current_version'];
+
+        // Validate PHP syntax of new version
+        $temp_file = TEMP_DIR . '/installer_new.php';
+        if (!file_exists(TEMP_DIR)) {
+            mkdir(TEMP_DIR, 0755, true);
+        }
+
+        file_put_contents($temp_file, $remote_content);
+
+        // Check PHP syntax
+        $syntax_check = shell_exec("php -l " . escapeshellarg($temp_file) . " 2>&1");
+        if (strpos($syntax_check, 'No syntax errors') === false) {
+            unlink($temp_file);
+            throw new Exception('New installer has PHP syntax errors: ' . $syntax_check);
+        }
+
+        // Backup current installer
+        $current_file = __FILE__;
+        if (!copy($current_file, BACKUP_FILE)) {
+            unlink($temp_file);
+            throw new Exception('Failed to create backup of current installer');
+        }
+
+        // Replace current installer with new version
+        if (!copy($temp_file, $current_file)) {
+            // Restore backup on failure
+            copy(BACKUP_FILE, $current_file);
+            unlink($temp_file);
+            throw new Exception('Failed to update installer file');
+        }
+
+        // Cleanup temp file
+        unlink($temp_file);
+
+        logUpdateMessage("Successfully updated installer from v{$current_version} to v{$new_version}");
+
+        return [
+            'success' => true,
+            'message' => "Successfully updated from v{$current_version} to v{$new_version}",
+            'updated' => true,
+            'old_version' => $current_version,
+            'new_version' => $new_version,
+            'backup_file' => basename(BACKUP_FILE)
+        ];
+
+    } catch (Exception $e) {
+        logUpdateMessage('Update failed: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+function rollbackInstaller() {
+    logUpdateMessage('Starting installer rollback...');
+
+    try {
+        if (!file_exists(BACKUP_FILE)) {
+            throw new Exception('No backup file found. Cannot rollback.');
+        }
+
+        $current_file = __FILE__;
+
+        // Create a backup of current version before rollback (just in case)
+        $emergency_backup = __DIR__ . '/installer.php.emergency_backup';
+        copy($current_file, $emergency_backup);
+
+        // Restore from backup
+        if (!copy(BACKUP_FILE, $current_file)) {
+            throw new Exception('Failed to restore from backup');
+        }
+
+        logUpdateMessage('Successfully rolled back installer');
+
+        return [
+            'success' => true,
+            'message' => 'Successfully rolled back to previous version',
+            'emergency_backup' => basename($emergency_backup)
+        ];
+
+    } catch (Exception $e) {
+        logUpdateMessage('Rollback failed: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+function getUpdateHistory() {
+    $history = [];
+    if (file_exists(UPDATE_LOG_FILE)) {
+        $lines = file(UPDATE_LOG_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $history = array_slice(array_reverse($lines), 0, 10); // Last 10 entries
+    }
+    return $history;
+}
+
+function logUpdateMessage($message) {
+    $timestamp = date('Y-m-d H:i:s');
+    $log_entry = "[{$timestamp}] {$message}\n";
+    @file_put_contents(UPDATE_LOG_FILE, $log_entry, FILE_APPEND | LOCK_EX);
+
+    // Also log to main installer log
+    logMessage('UPDATE: ' . $message);
+}
+
+/**
  * Testing functions with comprehensive cleanup
  */
 if (TESTING_MODE) {
@@ -265,6 +455,34 @@ if (TESTING_MODE) {
         echo json_encode([
             'success' => true,
             'message' => "Cleared {$logs_cleared} log files"
+        ]);
+        exit;
+    }
+
+    // Self-update endpoints
+    if (isset($_GET['action']) && $_GET['action'] === 'check_updates') {
+        header('Content-Type: application/json');
+        echo json_encode(checkForUpdates());
+        exit;
+    }
+
+    if (isset($_GET['action']) && $_GET['action'] === 'update_installer') {
+        header('Content-Type: application/json');
+        echo json_encode(updateInstaller());
+        exit;
+    }
+
+    if (isset($_GET['action']) && $_GET['action'] === 'rollback_installer') {
+        header('Content-Type: application/json');
+        echo json_encode(rollbackInstaller());
+        exit;
+    }
+
+    if (isset($_GET['action']) && $_GET['action'] === 'update_history') {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'history' => getUpdateHistory()
         ]);
         exit;
     }
@@ -783,6 +1001,22 @@ $system_checks = runSystemCheck();
             font-weight: bold;
             border-bottom-left-radius: 8px;
         }
+        .reset-card.update {
+            border: 2px solid #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+        }
+        .reset-card.update::before {
+            content: "🔄 UPDATE";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #3b82f6;
+            color: white;
+            padding: 4px 12px;
+            font-size: 10px;
+            font-weight: bold;
+            border-bottom-left-radius: 8px;
+        }
         .reset-title {
             font-size: 1.2em;
             font-weight: bold;
@@ -848,6 +1082,14 @@ $system_checks = runSystemCheck();
             background: linear-gradient(135deg, #059669 0%, #047857 100%);
             transform: translateY(-1px);
         }
+        .reset-button.update {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        .reset-button.update:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-1px);
+        }
         @keyframes pulse-red {
             0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
             50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
@@ -862,6 +1104,49 @@ $system_checks = runSystemCheck();
             margin: 10px 0;
             font-weight: 500;
         }
+        .update-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            color: #0369a1;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+        .update-available {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+        .version-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        .current-version {
+            color: #6b7280;
+        }
+        .new-version {
+            color: #059669;
+            font-weight: 600;
+        }
+        .update-history {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #f9fafb;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 11px;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -872,7 +1157,7 @@ $system_checks = runSystemCheck();
         </div>
 
         <div class="cleanup-notice">
-            ✅ <strong>ENHANCED:</strong> Built-in comprehensive filesystem cleanup - no more manual commands!
+            ✅ <strong>ENHANCED:</strong> Built-in comprehensive filesystem cleanup + self-update feature!
         </div>
 
         <div class="system-check-container">
@@ -940,10 +1225,43 @@ $system_checks = runSystemCheck();
             <div class="testing-tools">
                 <h3>🧪 Enhanced Testing & Reset Tools</h3>
                 <p style="text-align: center; color: #6b7280; margin-bottom: 25px;">
-                    <strong>Professional cleanup options:</strong> Choose the right reset level for your needs. Each option is designed for specific scenarios.
+                    <strong>Professional cleanup options:</strong> Choose the right reset level for your needs. Self-update feature keeps installer current.
                 </p>
 
                 <div class="reset-options-grid">
+                    <!-- Self-Update - New Feature -->
+                    <div class="reset-card update">
+                        <div class="reset-title">
+                            🔄 Self-Update Installer
+                        </div>
+                        <div class="reset-description">
+                            Automatically updates this installer to the latest version from GitHub repository.
+                        </div>
+                        <div class="update-info" id="update-status">
+                            <div class="version-info">
+                                <span class="current-version">Current: v<?php echo INSTALLER_VERSION; ?></span>
+                                <span id="remote-version"></span>
+                            </div>
+                            <div id="update-available-notice"></div>
+                        </div>
+                        <div class="reset-details">
+                            <div class="reset-keeps">
+                                <strong>Features:</strong> Version checking, syntax validation, automatic backup, safe rollback
+                            </div>
+                            <div class="reset-removes">
+                                <strong>Safety:</strong> Creates backup before update, validates PHP syntax, rollback on failure
+                            </div>
+                        </div>
+                        <div class="update-history" id="update-history" style="display: none;">
+                            <strong>Update History:</strong><br>
+                            <div id="update-history-content"></div>
+                        </div>
+                        <button onclick="checkForUpdates()" class="reset-button update">🔍 Check for Updates</button>
+                        <button onclick="updateInstaller()" class="reset-button update" id="update-button" style="display: none;">⬆️ Update Installer</button>
+                        <button onclick="rollbackInstaller()" class="reset-button" style="background: #f59e0b; color: white; display: none;" id="rollback-button">↩️ Rollback</button>
+                        <button onclick="showUpdateHistory()" class="reset-button safe" style="margin-top: 5px;">📜 Update History</button>
+                    </div>
+
                     <!-- Clear Logs - Safe Option -->
                     <div class="reset-card safe">
                         <div class="reset-title">
@@ -1016,7 +1334,7 @@ $system_checks = runSystemCheck();
 
                 <div style="margin-top: 25px; padding: 15px; background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; border-radius: 8px; text-align: center;">
                     <p style="color: #1e40af; margin: 0; font-size: 14px;">
-                        💡 <strong>Pro Tip:</strong> Always start with "Clear Logs" for routine cleanup. Use "Comprehensive Reset" for testing. Reserve "Nuclear Reset" for emergency situations only.
+                        💡 <strong>Pro Tip:</strong> Use "Self-Update" to get latest features. Start with "Clear Logs" for routine cleanup. Use "Comprehensive Reset" for testing. Reserve "Nuclear Reset" for emergency situations only.
                     </p>
                 </div>
             </div>
@@ -1092,6 +1410,121 @@ $system_checks = runSystemCheck();
     }
 
     <?php if (TESTING_MODE): ?>
+
+    // Self-Update Functions
+    async function checkForUpdates() {
+        showStatus("🔍 Checking for installer updates...", "info");
+        try {
+            const response = await fetch("?action=check_updates");
+            const result = await response.json();
+
+            if (result.success) {
+                const remoteVersionEl = document.getElementById('remote-version');
+                const updateNoticeEl = document.getElementById('update-available-notice');
+                const updateButton = document.getElementById('update-button');
+
+                remoteVersionEl.innerHTML = `<span class="new-version">Remote: v${result.remote_version}</span>`;
+
+                if (result.update_available) {
+                    updateNoticeEl.innerHTML = `<div class="update-available">🎉 Update available! v${result.current_version} → v${result.remote_version}</div>`;
+                    updateButton.style.display = 'block';
+                    showStatus(`✅ Update available: v${result.current_version} → v${result.remote_version}`, "success");
+                } else {
+                    updateNoticeEl.innerHTML = `<div class="update-info">✅ You have the latest version (v${result.current_version})</div>`;
+                    updateButton.style.display = 'none';
+                    showStatus(`✅ Already running latest version: v${result.current_version}`, "success");
+                }
+
+                // Show rollback button if backup exists
+                checkBackupExists();
+            } else {
+                showStatus("❌ Update check failed: " + result.error, "error");
+            }
+        } catch (error) {
+            showStatus("❌ Update check error: " + error.message, "error");
+        }
+    }
+
+    async function updateInstaller() {
+        if (!confirm("🔄 Update installer to the latest version? Current version will be backed up automatically.")) return;
+
+        showStatus("⬆️ Downloading and installing update...", "info");
+        try {
+            const response = await fetch("?action=update_installer");
+            const result = await response.json();
+
+            if (result.success) {
+                if (result.updated) {
+                    showStatus(`✅ ${result.message}`, "success");
+                    showStatus(`💾 Backup created: ${result.backup_file}`, "info");
+                    showStatus("🔄 Page will reload in 3 seconds to use new version...", "info");
+                    setTimeout(() => location.reload(), 3000);
+                } else {
+                    showStatus(`ℹ️ ${result.message}`, "info");
+                }
+            } else {
+                showStatus("❌ Update failed: " + result.error, "error");
+            }
+        } catch (error) {
+            showStatus("❌ Update error: " + error.message, "error");
+        }
+    }
+
+    async function rollbackInstaller() {
+        if (!confirm("↩️ Rollback to the previous installer version? This will replace the current version with the backup.")) return;
+
+        showStatus("↩️ Rolling back installer...", "info");
+        try {
+            const response = await fetch("?action=rollback_installer");
+            const result = await response.json();
+
+            if (result.success) {
+                showStatus(`✅ ${result.message}`, "success");
+                showStatus(`💾 Emergency backup created: ${result.emergency_backup}`, "info");
+                showStatus("🔄 Page will reload in 3 seconds...", "info");
+                setTimeout(() => location.reload(), 3000);
+            } else {
+                showStatus("❌ Rollback failed: " + result.error, "error");
+            }
+        } catch (error) {
+            showStatus("❌ Rollback error: " + error.message, "error");
+        }
+    }
+
+    async function showUpdateHistory() {
+        const historyEl = document.getElementById('update-history');
+        const contentEl = document.getElementById('update-history-content');
+
+        try {
+            const response = await fetch("?action=update_history");
+            const result = await response.json();
+
+            if (result.success && result.history.length > 0) {
+                contentEl.innerHTML = result.history.join('<br>');
+                historyEl.style.display = 'block';
+                showStatus(`📜 Showing ${result.history.length} recent update entries`, "info");
+            } else {
+                showStatus("📜 No update history found", "info");
+                historyEl.style.display = 'none';
+            }
+        } catch (error) {
+            showStatus("❌ Failed to load update history: " + error.message, "error");
+        }
+    }
+
+    function checkBackupExists() {
+        // This would require another endpoint, but for now we'll just show the rollback button
+        // if the user has performed an update
+        const rollbackButton = document.getElementById('rollback-button');
+        rollbackButton.style.display = 'block';
+    }
+
+    // Automatically check for updates on page load
+    window.addEventListener('load', function() {
+        // Small delay to let the page settle
+        setTimeout(checkForUpdates, 1000);
+    });
+
     async function comprehensiveReset() {
         if (!confirm("🔄 This will remove ALL installation files, configs, logs, and artifacts. Continue?")) return;
         showStatus("🧹 Running comprehensive reset...", "info");
