@@ -1,11 +1,11 @@
 <?php
 /**
  * GlowHost Contact Form System - One-Click Installer
- * Version: 1.4 - Fixed Deployment (Web Root Only)
+ * Version: 1.5 - With Comprehensive Cleanup
  */
 
 // Configuration
-define('INSTALLER_VERSION', '1.4');
+define('INSTALLER_VERSION', '1.5');
 define('PACKAGE_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
 define('PACKAGE_DIR', 'contact-form-sales-main');
 define('LOG_FILE', __DIR__ . '/installer.log');
@@ -38,51 +38,215 @@ function removeDirectory($directory) {
 }
 
 /**
- * Testing functions
+ * COMPREHENSIVE CLEANUP FUNCTION
+ */
+function comprehensiveCleanup() {
+    $items_removed = 0;
+    $cleanup_log = [];
+
+    // Installation markers and state files
+    $markers = [
+        '.installer_complete',
+        '.env.local',
+        'next-env.d.ts',
+        'tsconfig.tsbuildinfo'
+    ];
+
+    foreach ($markers as $marker) {
+        $path = __DIR__ . '/' . $marker;
+        if (file_exists($path)) {
+            unlink($path);
+            $items_removed++;
+            $cleanup_log[] = "Removed marker: $marker";
+        }
+    }
+
+    // Installation directories
+    $directories = [
+        'install',
+        'src',
+        'config',
+        'api',
+        'scripts',
+        'Contact-Form-Sales',
+        'contact-form-sales',
+        '.next',
+        'node_modules',
+        'out'
+    ];
+
+    foreach ($directories as $dir) {
+        $path = __DIR__ . '/' . $dir;
+        if (is_dir($path)) {
+            removeDirectory($path);
+            $items_removed++;
+            $cleanup_log[] = "Removed directory: $dir";
+        }
+    }
+
+    // Configuration files
+    $config_files = [
+        'package.json',
+        'package-lock.json',
+        'next.config.js',
+        'tsconfig.json',
+        'tailwind.config.ts',
+        'biome.json',
+        'eslint.config.mjs',
+        'components.json',
+        'postcss.config.mjs',
+        'netlify.toml',
+        'bun.lock',
+        '.gitignore'
+    ];
+
+    foreach ($config_files as $file) {
+        $path = __DIR__ . '/' . $file;
+        if (file_exists($path)) {
+            unlink($path);
+            $items_removed++;
+            $cleanup_log[] = "Removed config: $file";
+        }
+    }
+
+    // Documentation files
+    $docs = [
+        'README.md',
+        'START-HERE-AI.md',
+        'DEPLOYMENT.md',
+        'DATABASE_INTEGRATION.md'
+    ];
+
+    foreach ($docs as $doc) {
+        $path = __DIR__ . '/' . $doc;
+        if (file_exists($path)) {
+            unlink($path);
+            $items_removed++;
+            $cleanup_log[] = "Removed doc: $doc";
+        }
+    }
+
+    // Debug and test files
+    $debug_files = [
+        'installer-debug.php',
+        'installer-fixed.php',
+        'installer-reset.php',
+        'installer-reset-clean.php',
+        'line-97-debug.php',
+        'installer-ajax-debug.php',
+        'webhook-deploy-secure.php',
+        'webhook-htaccess-security.txt'
+    ];
+
+    foreach ($debug_files as $file) {
+        $path = __DIR__ . '/' . $file;
+        if (file_exists($path)) {
+            unlink($path);
+            $items_removed++;
+            $cleanup_log[] = "Removed debug file: $file";
+        }
+    }
+
+    // Temp directories
+    $temp_dirs = glob(__DIR__ . '/installer_temp_*');
+    foreach ($temp_dirs as $temp_dir) {
+        if (is_dir($temp_dir)) {
+            removeDirectory($temp_dir);
+            $items_removed++;
+            $cleanup_log[] = "Removed temp: " . basename($temp_dir);
+        }
+    }
+
+    // Log files
+    $logs = ['installer.log', 'reset.log', 'error.log'];
+    foreach ($logs as $log) {
+        $path = __DIR__ . '/' . $log;
+        if (file_exists($path)) {
+            unlink($path);
+            $items_removed++;
+            $cleanup_log[] = "Removed log: $log";
+        }
+    }
+
+    // Archives
+    $archives = glob(__DIR__ . '/*.zip');
+    foreach ($archives as $archive) {
+        unlink($archive);
+        $items_removed++;
+        $cleanup_log[] = "Removed archive: " . basename($archive);
+    }
+
+    // Optional: Remove .htaccess if it was created during installation
+    $htaccess = __DIR__ . '/.htaccess';
+    if (file_exists($htaccess)) {
+        // Only remove if it looks like it was created by our installer
+        $content = file_get_contents($htaccess);
+        if (strpos($content, 'RewriteEngine') !== false || strpos($content, 'Next.js') !== false) {
+            unlink($htaccess);
+            $items_removed++;
+            $cleanup_log[] = "Removed installer .htaccess";
+        }
+    }
+
+    return [
+        'items_removed' => $items_removed,
+        'cleanup_log' => $cleanup_log
+    ];
+}
+
+/**
+ * Testing functions with comprehensive cleanup
  */
 if (TESTING_MODE) {
+    // Enhanced reset with comprehensive cleanup
     if (isset($_GET['action']) && $_GET['action'] === 'reset') {
-        $items_removed = 0;
+        $result = comprehensiveCleanup();
 
-        // Remove installation marker
-        if (file_exists(__DIR__ . '/.installer_complete')) {
-            unlink(__DIR__ . '/.installer_complete');
-            $items_removed++;
-        }
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'message' => "Comprehensive cleanup complete: {$result['items_removed']} items removed",
+            'items_removed' => $result['items_removed'],
+            'cleanup_log' => $result['cleanup_log']
+        ]);
+        exit;
+    }
 
-        // Remove temp directories
-        $temp_dirs = glob(__DIR__ . '/installer_temp_*');
-        foreach ($temp_dirs as $temp_dir) {
-            if (is_dir($temp_dir)) {
-                removeDirectory($temp_dir);
-                $items_removed++;
-            }
-        }
+    // Nuclear option - complete filesystem reset
+    if (isset($_GET['action']) && $_GET['action'] === 'nuclear_reset') {
+        $result = comprehensiveCleanup();
 
-        // Remove deployed directories (the problematic ones)
-        $deployed_dirs = ['install', 'src', 'config', 'api', 'scripts', 'Contact-Form-Sales', 'contact-form-sales'];
-        foreach ($deployed_dirs as $dir) {
-            $path = __DIR__ . '/' . $dir;
-            if (is_dir($path)) {
-                removeDirectory($path);
-                $items_removed++;
-            }
-        }
+        // Also remove any remaining files that might be installation-related
+        $all_files = scandir(__DIR__);
+        $protected_files = ['.', '..', 'installer.php', '.same', '.well-known'];
+        $additional_removed = 0;
 
-        // Remove deployed files
-        $deployed_files = ['package.json', 'next.config.js', 'README.md', '.env.local'];
-        foreach ($deployed_files as $file) {
-            $path = __DIR__ . '/' . $file;
-            if (file_exists($path)) {
-                unlink($path);
-                $items_removed++;
+        foreach ($all_files as $file) {
+            if (!in_array($file, $protected_files)) {
+                $path = __DIR__ . '/' . $file;
+                if (is_file($path)) {
+                    // Be extra careful - only remove known file types
+                    $ext = pathinfo($file, PATHINFO_EXTENSION);
+                    $safe_extensions = ['php', 'js', 'json', 'md', 'txt', 'yml', 'yaml', 'log', 'zip'];
+                    if (in_array($ext, $safe_extensions)) {
+                        unlink($path);
+                        $additional_removed++;
+                        $result['cleanup_log'][] = "Nuclear: removed $file";
+                    }
+                } elseif (is_dir($path)) {
+                    removeDirectory($path);
+                    $additional_removed++;
+                    $result['cleanup_log'][] = "Nuclear: removed directory $file";
+                }
             }
         }
 
         header('Content-Type: application/json');
         echo json_encode([
             'success' => true,
-            'message' => "Reset complete: {$items_removed} items removed"
+            'message' => "Nuclear reset complete: " . ($result['items_removed'] + $additional_removed) . " total items removed",
+            'items_removed' => $result['items_removed'] + $additional_removed,
+            'cleanup_log' => $result['cleanup_log']
         ]);
         exit;
     }
@@ -297,9 +461,6 @@ function extractPackage() {
     ];
 }
 
-/**
- * FIXED: Deploy files directly to web root (not subdirectories)
- */
 function deployFiles() {
     $source_path = TEMP_DIR . '/extracted/' . PACKAGE_DIR;
     $target_path = __DIR__;
@@ -311,8 +472,6 @@ function deployFiles() {
     logMessage('FIXED DEPLOYMENT: Deploying files from ' . $source_path . ' directly to web root: ' . $target_path);
 
     $files_copied = 0;
-
-    // Get all items in the source directory
     $items = scandir($source_path);
 
     foreach ($items as $item) {
@@ -323,18 +482,15 @@ function deployFiles() {
         $source_item = $source_path . '/' . $item;
         $target_item = $target_path . '/' . $item;
 
-        // Skip installer files to avoid overwriting ourselves
         if (strpos($item, 'installer') !== false) {
             logMessage('Skipping installer file: ' . $item);
             continue;
         }
 
         if (is_dir($source_item)) {
-            // Copy directory
             logMessage('Copying directory: ' . $item);
             $files_copied += copyDirectoryContents($source_item, $target_item);
         } else {
-            // Copy file
             logMessage('Copying file: ' . $item);
             if (copy($source_item, $target_item)) {
                 $files_copied++;
@@ -352,9 +508,6 @@ function deployFiles() {
     ];
 }
 
-/**
- * Copy directory contents recursively
- */
 function copyDirectoryContents($source, $destination) {
     $files_copied = 0;
 
@@ -375,7 +528,6 @@ function copyDirectoryContents($source, $destination) {
                 mkdir($target, 0755, true);
             }
         } else {
-            // Skip installer files
             $basename = basename($item);
             if (strpos($basename, 'installer') === false) {
                 copy($item, $target);
@@ -481,7 +633,7 @@ $system_checks = runSystemCheck();
             font-size: 16px;
             opacity: 0.9;
         }
-        .fix-notice {
+        .cleanup-notice {
             background: #f0fdf4;
             border: 1px solid #bbf7d0;
             color: #16a34a;
@@ -583,6 +735,13 @@ $system_checks = runSystemCheck();
             font-size: 14px;
             margin: 0 8px 8px 0;
         }
+        .test-button.nuclear {
+            background: #dc2626;
+            font-weight: bold;
+        }
+        .test-button.secondary {
+            background: #f59e0b;
+        }
     </style>
 </head>
 <body>
@@ -592,8 +751,8 @@ $system_checks = runSystemCheck();
             <p>Professional One-Click Installer v<?php echo INSTALLER_VERSION; ?></p>
         </div>
 
-        <div class="fix-notice">
-            ✅ <strong>FIXED:</strong> Installer now deploys directly to web root (no more subdirectories!)
+        <div class="cleanup-notice">
+            ✅ <strong>ENHANCED:</strong> Built-in comprehensive filesystem cleanup - no more manual commands!
         </div>
 
         <div class="system-check-container">
@@ -625,11 +784,13 @@ $system_checks = runSystemCheck();
                     <p>The contact form system appears to be already installed.</p>
                     <br>
                     <a href="install/" style="color: #1a365d; font-weight: 600;">→ Access Installation Wizard</a>
+                    <br><br>
+                    <p><strong>For testing:</strong> Use the "Comprehensive Reset" button below to clean everything and start fresh.</p>
                 </div>
             <?php else: ?>
                 <div style="text-align: center;">
                     <h2>Ready to Install</h2>
-                    <p>This installer deploys files directly to the web root (no subdirectories).</p>
+                    <p>This installer deploys files directly to the web root with built-in comprehensive cleanup.</p>
 
                     <?php
                     $can_install = true;
@@ -647,20 +808,22 @@ $system_checks = runSystemCheck();
 
                     <button class="install-button" id="install-button" onclick="startInstallation()" <?php echo $can_install ? '' : 'disabled'; ?>>
                         <span id="button-text">
-                            <?php echo $can_install ? '🚀 Install Contact Form System (Fixed)' : '❌ Cannot Install - Fix Errors Above'; ?>
+                            <?php echo $can_install ? '🚀 Install Contact Form System' : '❌ Cannot Install - Fix Errors Above'; ?>
                         </span>
                     </button>
 
                     <div id="status-messages"></div>
-
-                    <?php if (TESTING_MODE): ?>
-                    <div class="testing-tools">
-                        <h3>🧪 Testing Tools (Development Only)</h3>
-                        <button onclick="resetInstallation()" class="test-button">🔄 Quick Reset</button>
-                        <button onclick="clearLogs()" class="test-button">📝 Clear Logs</button>
-                    </div>
-                    <?php endif; ?>
                 </div>
+            <?php endif; ?>
+
+            <?php if (TESTING_MODE): ?>
+            <div class="testing-tools">
+                <h3>🧪 Enhanced Testing Tools</h3>
+                <p><strong>Comprehensive cleanup built-in:</strong> No more manual command-line cleanup needed!</p>
+                <button onclick="comprehensiveReset()" class="test-button">🔄 Comprehensive Reset</button>
+                <button onclick="nuclearReset()" class="test-button nuclear">💥 Nuclear Reset</button>
+                <button onclick="clearLogs()" class="test-button secondary">📝 Clear Logs</button>
+            </div>
             <?php endif; ?>
         </div>
     </div>
@@ -693,7 +856,7 @@ $system_checks = runSystemCheck();
         } catch (error) {
             showStatus('❌ Installation failed: ' + error.message, 'error');
             button.disabled = false;
-            button.innerHTML = '🚀 Install Contact Form System (Fixed)';
+            button.innerHTML = '🚀 Install Contact Form System';
         }
     }
 
@@ -727,24 +890,49 @@ $system_checks = runSystemCheck();
         statusDiv.innerHTML = message;
         container.appendChild(statusDiv);
 
-        if (container.children.length > 3) {
+        if (container.children.length > 5) {
             container.removeChild(container.firstChild);
         }
     }
 
     <?php if (TESTING_MODE): ?>
-    async function resetInstallation() {
-        if (!confirm("🔄 This will reset the installation. Continue?")) return;
-        showStatus("🧹 Resetting installation...", "info");
+    async function comprehensiveReset() {
+        if (!confirm("🔄 This will remove ALL installation files, configs, logs, and artifacts. Continue?")) return;
+        showStatus("🧹 Running comprehensive reset...", "info");
         try {
             const response = await fetch("?action=reset");
             const result = await response.json();
             if (result.success) {
-                showStatus("✅ Reset complete! Reloading page...", "success");
-                setTimeout(() => location.reload(), 2000);
+                showStatus(`✅ ${result.message}`, "success");
+                if (result.cleanup_log) {
+                    result.cleanup_log.slice(0, 5).forEach(log => {
+                        showStatus(`• ${log}`, "info");
+                    });
+                }
+                setTimeout(() => location.reload(), 3000);
             }
         } catch (error) {
             showStatus("❌ Reset error: " + error.message, "error");
+        }
+    }
+
+    async function nuclearReset() {
+        if (!confirm("💥 NUCLEAR RESET: This will remove EVERYTHING except installer.php, .same/, and .well-known/. This is the most aggressive cleanup possible. Are you absolutely sure?")) return;
+        showStatus("💥 Running nuclear reset...", "info");
+        try {
+            const response = await fetch("?action=nuclear_reset");
+            const result = await response.json();
+            if (result.success) {
+                showStatus(`✅ ${result.message}`, "success");
+                if (result.cleanup_log) {
+                    result.cleanup_log.slice(0, 5).forEach(log => {
+                        showStatus(`• ${log}`, "info");
+                    });
+                }
+                setTimeout(() => location.reload(), 4000);
+            }
+        } catch (error) {
+            showStatus("❌ Nuclear reset error: " + error.message, "error");
         }
     }
 
