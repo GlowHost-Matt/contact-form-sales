@@ -720,27 +720,147 @@ $system_checks = runSystemCheck();
         }
         .testing-tools {
             margin-top: 40px;
-            padding: 20px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid #ef4444;
-            border-radius: 8px;
+            padding: 30px;
+            background: linear-gradient(135deg, #fef3c7 0%, #f3f4f6 100%);
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .test-button {
-            background: #ef4444;
+        .testing-tools h3 {
+            margin-bottom: 20px;
+            color: #92400e;
+            font-size: 1.5em;
+            text-align: center;
+        }
+        .reset-options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        .reset-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .reset-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        .reset-card.nuclear {
+            border: 2px solid #dc2626;
+            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+        }
+        .reset-card.nuclear::before {
+            content: "⚠️ DANGER";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #dc2626;
             color: white;
+            padding: 4px 12px;
+            font-size: 10px;
+            font-weight: bold;
+            border-bottom-left-radius: 8px;
+        }
+        .reset-card.safe {
+            border: 2px solid #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        }
+        .reset-card.safe::before {
+            content: "✅ SAFE";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            font-size: 10px;
+            font-weight: bold;
+            border-bottom-left-radius: 8px;
+        }
+        .reset-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .reset-description {
+            color: #6b7280;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .reset-details {
+            background: #f9fafb;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+        .reset-removes, .reset-keeps {
+            margin: 8px 0;
+        }
+        .reset-removes strong {
+            color: #dc2626;
+        }
+        .reset-keeps strong {
+            color: #10b981;
+        }
+        .reset-button {
+            width: 100%;
             border: none;
-            padding: 8px 16px;
+            padding: 12px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            margin: 0 8px 8px 0;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 15px;
         }
-        .test-button.nuclear {
-            background: #dc2626;
-            font-weight: bold;
+        .reset-button.comprehensive {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
         }
-        .test-button.secondary {
-            background: #f59e0b;
+        .reset-button.comprehensive:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            transform: translateY(-1px);
+        }
+        .reset-button.nuclear {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            animation: pulse-red 2s infinite;
+        }
+        .reset-button.nuclear:hover {
+            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+            transform: translateY(-1px);
+        }
+        .reset-button.safe {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .reset-button.safe:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+        }
+        .warning-text {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin: 10px 0;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -818,11 +938,87 @@ $system_checks = runSystemCheck();
 
             <?php if (TESTING_MODE): ?>
             <div class="testing-tools">
-                <h3>🧪 Enhanced Testing Tools</h3>
-                <p><strong>Comprehensive cleanup built-in:</strong> No more manual command-line cleanup needed!</p>
-                <button onclick="comprehensiveReset()" class="test-button">🔄 Comprehensive Reset</button>
-                <button onclick="nuclearReset()" class="test-button nuclear">💥 Nuclear Reset</button>
-                <button onclick="clearLogs()" class="test-button secondary">📝 Clear Logs</button>
+                <h3>🧪 Enhanced Testing & Reset Tools</h3>
+                <p style="text-align: center; color: #6b7280; margin-bottom: 25px;">
+                    <strong>Professional cleanup options:</strong> Choose the right reset level for your needs. Each option is designed for specific scenarios.
+                </p>
+
+                <div class="reset-options-grid">
+                    <!-- Clear Logs - Safe Option -->
+                    <div class="reset-card safe">
+                        <div class="reset-title">
+                            📝 Clear Logs
+                        </div>
+                        <div class="reset-description">
+                            Safely removes installer logs and temporary files without affecting your installation.
+                        </div>
+                        <div class="reset-details">
+                            <div class="reset-removes">
+                                <strong>Removes:</strong> installer.log, temporary files, error logs
+                            </div>
+                            <div class="reset-keeps">
+                                <strong>Keeps:</strong> All installed files, configurations, and directories
+                            </div>
+                        </div>
+                        <p style="color: #059669; font-size: 13px; margin: 10px 0;">
+                            ✅ <strong>Recommended for:</strong> Regular maintenance and cleanup
+                        </p>
+                        <button onclick="clearLogs()" class="reset-button safe">📝 Clear Logs Only</button>
+                    </div>
+
+                    <!-- Comprehensive Reset - Standard Option -->
+                    <div class="reset-card">
+                        <div class="reset-title">
+                            🔄 Comprehensive Reset
+                        </div>
+                        <div class="reset-description">
+                            Removes all installation-related files while preserving critical system files and configurations.
+                        </div>
+                        <div class="reset-details">
+                            <div class="reset-removes">
+                                <strong>Removes:</strong> src/, config/, api/, scripts/, Contact-Form-Sales/, .next/, node_modules/, package.json, .env.local, logs
+                            </div>
+                            <div class="reset-keeps">
+                                <strong>Keeps:</strong> installer.php, .htaccess, README.md, .same/, .well-known/, .git/
+                            </div>
+                        </div>
+                        <p style="color: #d97706; font-size: 13px; margin: 10px 0;">
+                            ⚠️ <strong>Use when:</strong> Testing installations or starting fresh deployments
+                        </p>
+                        <button onclick="comprehensiveReset()" class="reset-button comprehensive">🔄 Comprehensive Reset</button>
+                    </div>
+
+                    <!-- Nuclear Reset - Danger Zone -->
+                    <div class="reset-card nuclear">
+                        <div class="reset-title">
+                            💥 Nuclear Reset
+                        </div>
+                        <div class="reset-description">
+                            <strong>IRREVERSIBLE:</strong> Removes everything except core system files. This is the most aggressive cleanup possible.
+                        </div>
+                        <div class="warning-text">
+                            ⚠️ <strong>WARNING:</strong> This operation cannot be undone! Only use if you need to completely start over.
+                        </div>
+                        <div class="reset-details">
+                            <div class="reset-removes">
+                                <strong>Removes:</strong> ALL files and directories except installer.php, .same/, and .well-known/
+                            </div>
+                            <div class="reset-keeps">
+                                <strong>Keeps:</strong> installer.php, .same/ folder, .well-known/ folder
+                            </div>
+                        </div>
+                        <p style="color: #dc2626; font-size: 13px; margin: 10px 0; font-weight: 600;">
+                            🚨 <strong>Only use if:</strong> Complete system wipe is required
+                        </p>
+                        <button onclick="nuclearReset()" class="reset-button nuclear">💥 Nuclear Reset</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px; padding: 15px; background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; border-radius: 8px; text-align: center;">
+                    <p style="color: #1e40af; margin: 0; font-size: 14px;">
+                        💡 <strong>Pro Tip:</strong> Always start with "Clear Logs" for routine cleanup. Use "Comprehensive Reset" for testing. Reserve "Nuclear Reset" for emergency situations only.
+                    </p>
+                </div>
             </div>
             <?php endif; ?>
         </div>
