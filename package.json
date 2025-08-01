@@ -11,6 +11,8 @@
     "start": "next start",
     "lint": "bunx tsc --noEmit && next lint",
     "format": "bunx biome format --write",
+    "test:all": "node scripts/test-deployment.js",
+    "deploy:test": "node scripts/test-deployment.js --keep-artifacts",
     "deploy:validate": "node scripts/build-deployment.js --validate-only",
     "deploy:package": "bun run build:deployment && echo '📦 Deployment package ready in deployment-package/'",
     "deploy:local": "bun run build:deployment && cd deployment-package && python3 -m http.server 8000",
