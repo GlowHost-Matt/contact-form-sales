@@ -1,14 +1,19 @@
 {
-  "name": "nextjs-shadcn",
-  "version": "0.1.0",
+  "name": "glowhost-contact-form-system",
+  "version": "1.0.0",
+  "description": "Professional contact form system optimized for shared hosting deployment",
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0 --turbopack",
     "build": "next build",
     "build-static": "next build",
+    "build:deployment": "next build && node scripts/build-deployment.js",
     "start": "next start",
     "lint": "bunx tsc --noEmit && next lint",
     "format": "bunx biome format --write",
+    "deploy:validate": "node scripts/build-deployment.js --validate-only",
+    "deploy:package": "bun run build:deployment && echo '📦 Deployment package ready in deployment-package/'",
+    "deploy:local": "bun run build:deployment && cd deployment-package && python3 -m http.server 8000",
     "docs:format": "node .same/doc-formatter.js format",
     "docs:validate": "node .same/doc-formatter.js validate",
     "docs:check": "node .same/doc-formatter.js validate && echo 'All documentation is properly formatted!'",
@@ -16,6 +21,21 @@
     "git:status": "node scripts/git-status.js",
     "git:verify": "bash scripts/verify-github-sync.sh",
     "git:check": "git status && git remote -v && git log --oneline -3"
+  },
+  "keywords": [
+    "contact-form",
+    "nextjs",
+    "shared-hosting",
+    "glowhost",
+    "cpanel",
+    "php",
+    "static-export"
+  ],
+  "author": "GlowHost",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GlowHost-Matt/contact-form-sales.git"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -39,5 +59,15 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  },
+  "deploymentInfo": {
+    "targetEnvironment": "shared-hosting",
+    "phpVersion": "7.4+",
+    "webServer": "Apache",
+    "features": ["static-export", "php-api", "cpanel-optimized"]
   }
 }
