@@ -1,11 +1,11 @@
 <?php
 /**
  * GlowHost Contact Form System - One-Click Installer
- * Version: 1.5 - With Comprehensive Cleanup
+ * Version: 1.6 - With Self-Update Feature
  */
 
 // Configuration
-define('INSTALLER_VERSION', '1.5');
+define('INSTALLER_VERSION', '1.6');
 define('PACKAGE_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
 define('PACKAGE_DIR', 'contact-form-sales-main');
 define('LOG_FILE', __DIR__ . '/installer.log');
