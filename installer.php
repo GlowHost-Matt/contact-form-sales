@@ -233,17 +233,17 @@ class DatabaseManager {
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]);
 
-            // Admin users table
+            // Users table with role-based permissions
             $pdo->exec("
-                CREATE TABLE IF NOT EXISTS admin_users (
+                CREATE TABLE IF NOT EXISTS users (
                     id INT PRIMARY KEY AUTO_INCREMENT,
                     username VARCHAR(50) UNIQUE NOT NULL,
                     email VARCHAR(100) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
-                    role ENUM('super_admin', 'admin') DEFAULT 'admin',
+                    role ENUM('super_admin', 'admin', 'user') DEFAULT 'user',
+                    status ENUM('active', 'inactive') DEFAULT 'active',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_login TIMESTAMP NULL,
-                    status ENUM('active', 'inactive') DEFAULT 'active'
+                    last_login TIMESTAMP NULL
                 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
             ");
 
@@ -351,7 +351,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             $schema_result = DatabaseManager::installSchema($host, $username, $password, $database);
+
+            if ($schema_result['success']) {
+                // Store database config for next steps
+                $_SESSION['db_config'] = [
+                    'host' => $host,
+                    'username' => $username,
+                    'password' => $password,
+                    'database' => $database
+                ];
+            }
+
             echo json_encode($schema_result);
+            break;
+
+        case 'create_admin':
+            $db_config = $_SESSION['db_config'] ?? null;
+            if (!$db_config) {
+                echo json_encode(['success' => false, 'message' => 'Database configuration not found']);
+                break;
+            }
+
+            $email = $_POST['admin_email'] ?? '';
+            $password = $_POST['admin_password'] ?? '';
+            $confirm_password = $_POST['confirm_password'] ?? '';
+
+            if (empty($email) || empty($password)) {
+                echo json_encode(['success' => false, 'message' => 'Email and password are required']);
+                break;
+            }
+
+            if ($password !== $confirm_password) {
+                echo json_encode(['success' => false, 'message' => 'Passwords do not match']);
+                break;
+            }
+
+            if (strlen($password) < 8) {
+                echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters']);
+                break;
+            }
+
+            try {
+                $pdo = new PDO(
+                    "mysql:host={$db_config['host']};dbname={$db_config['database']}",
+                    $db_config['username'],
+                    $db_config['password'],
+                    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+                );
+
+                $password_hash = password_hash($password, PASSWORD_DEFAULT);
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO users (username, email, password_hash, role, status)
+                    VALUES ('admin', ?, ?, 'super_admin', 'active')
+                ");
+
+                $stmt->execute([$email, $password_hash]);
+
+                echo json_encode(['success' => true, 'message' => 'Admin account created successfully']);
+
+            } catch (PDOException $e) {
+                echo json_encode(['success' => false, 'message' => 'Failed to create admin account: ' . $e->getMessage()]);
+            }
             break;
 
         default:
@@ -892,7 +953,53 @@ if (!$wizard->isValidStep($current_step)) {
                 </div>
             </div>
 
-            <!-- Additional steps will be added here -->
+            <!-- Step 3: Admin Account Creation -->
+            <div class="step-content <?php echo $current_step === 3 ? 'active' : ''; ?>" id="step-3">
+                <div class="step-title">Create Admin Account</div>
+                <div class="step-description">
+                    Create your administrator account to manage the contact form system.
+                </div>
+
+                <form id="admin-form">
+                    <div class="form-group">
+                        <label class="form-label" for="admin_username">Username</label>
+                        <input type="text" class="form-input" id="admin_username" value="admin" readonly style="background: #f3f4f6; color: #6b7280;">
+                        <div class="form-help">Username is automatically set to 'admin'</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="admin_email">Email Address</label>
+                        <input type="email" class="form-input" id="admin_email" name="admin_email" required>
+                        <div class="form-help">Used for notifications and account recovery</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="admin_password">Password</label>
+                        <input type="password" class="form-input" id="admin_password" name="admin_password" required>
+                        <div class="form-help">Minimum 8 characters</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="confirm_password">Confirm Password</label>
+                        <input type="password" class="form-input" id="confirm_password" name="confirm_password" required>
+                    </div>
+
+                    <div class="message error" style="display: block; margin: 20px 0;">
+                        ⚠️ <strong>IMPORTANT:</strong> Save these credentials safely! There is no password recovery without database access.
+                    </div>
+                </form>
+
+                <div id="admin-messages"></div>
+
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="previousStep(3)">
+                        ← Back
+                    </button>
+                    <button class="btn btn-primary" id="next-step-3" onclick="createAdmin()">
+                        Create Admin Account →
+                    </button>
+                </div>
+            </div>
 
         </div>
     </div>
@@ -1038,6 +1145,31 @@ if (!$wizard->isValidStep($current_step)) {
                 }
             } catch (error) {
                 showMessage('❌ Database installation failed: ' + error.message, 'error', 'database-messages');
+            }
+        }
+
+        async function createAdmin() {
+            const form = document.getElementById('admin-form');
+            const formData = new FormData(form);
+            formData.append('action', 'create_admin');
+            formData.append('csrf_token', csrfToken);
+
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ ' + result.message, 'success', 'admin-messages');
+                    setTimeout(() => nextStep(3), 1500);
+                } else {
+                    showMessage('❌ ' + result.message, 'error', 'admin-messages');
+                }
+            } catch (error) {
+                showMessage('❌ Admin account creation failed: ' + error.message, 'error', 'admin-messages');
             }
         }
 
