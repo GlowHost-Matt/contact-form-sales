@@ -297,6 +297,208 @@ class DatabaseManager {
     }
 }
 
+/**
+ * ADMIN INTERFACE GENERATOR
+ */
+class AdminGenerator {
+
+    public static function createDirectoryStructure() {
+        $directories = [
+            ADMIN_DIR,
+            ADMIN_DIR . '/includes',
+            ASSETS_DIR,
+            ASSETS_DIR . '/css',
+            ASSETS_DIR . '/js'
+        ];
+
+        foreach ($directories as $dir) {
+            if (!is_dir($dir)) {
+                if (!mkdir($dir, 0755, true)) {
+                    return ['success' => false, 'message' => "Failed to create directory: $dir"];
+                }
+            }
+        }
+
+        return ['success' => true, 'message' => 'Admin directory structure created'];
+    }
+
+    public static function generateConfigFile($db_config) {
+        $config_content = "<?php\n";
+        $config_content .= "/**\n";
+        $config_content .= " * GlowHost Contact Form System - Configuration\n";
+        $config_content .= " * Generated: " . date('Y-m-d H:i:s') . "\n";
+        $config_content .= " */\n\n";
+
+        $config_content .= "// Database Configuration\n";
+        $config_content .= "define('DB_HOST', '" . addslashes($db_config['host']) . "');\n";
+        $config_content .= "define('DB_NAME', '" . addslashes($db_config['database']) . "');\n";
+        $config_content .= "define('DB_USER', '" . addslashes($db_config['username']) . "');\n";
+        $config_content .= "define('DB_PASS', '" . addslashes($db_config['password']) . "');\n\n";
+
+        $config_content .= "// System Configuration\n";
+        $config_content .= "define('SITE_URL', '" . self::getSiteUrl() . "');\n";
+        $config_content .= "define('ADMIN_URL', '" . self::getSiteUrl() . "/" . ADMIN_DIR . "');\n";
+        $config_content .= "define('SYSTEM_VERSION', '" . INSTALLER_VERSION . "');\n\n";
+
+        $config_content .= "// Initialize database connection\n";
+        $config_content .= "try {\n";
+        $config_content .= "    \$pdo = new PDO(\n";
+        $config_content .= "        'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',\n";
+        $config_content .= "        DB_USER,\n";
+        $config_content .= "        DB_PASS,\n";
+        $config_content .= "        [\n";
+        $config_content .= "            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,\n";
+        $config_content .= "            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC\n";
+        $config_content .= "        ]\n";
+        $config_content .= "    );\n";
+        $config_content .= "} catch (PDOException \$e) {\n";
+        $config_content .= "    die('Database connection failed: ' . \$e->getMessage());\n";
+        $config_content .= "}\n";
+
+        if (file_put_contents(CONFIG_FILE, $config_content)) {
+            return ['success' => true, 'message' => 'Configuration file created'];
+        } else {
+            return ['success' => false, 'message' => 'Failed to create configuration file'];
+        }
+    }
+
+    public static function createAdminFiles() {
+        try {
+            // Create basic admin login page
+            $login_content = '<?php
+require_once "../config.php";
+session_start();
+
+if ($_POST) {
+    $username = $_POST["username"] ?? "";
+    $password = $_POST["password"] ?? "";
+
+    if ($username && $password) {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? AND status = \"active\"");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
+
+        if ($user && password_verify($password, $user["password_hash"])) {
+            $_SESSION["admin_user"] = $user;
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = "Invalid credentials";
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Login</title>
+    <style>
+        body { font-family: system-ui; background: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+        .btn { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+        .error { background: #fef2f2; color: #dc2626; padding: 12px; border-radius: 6px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2>Admin Login</h2>
+        <?php if (isset($error)): ?>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+        <form method="POST">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-input" name="username" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-input" name="password" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+    </div>
+</body>
+</html>';
+
+            // Create basic admin dashboard
+            $dashboard_content = '<?php
+require_once "../config.php";
+session_start();
+
+if (!isset($_SESSION["admin_user"])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user = $_SESSION["admin_user"];
+$stmt = $pdo->query("SELECT COUNT(*) as total FROM form_submissions");
+$stats = $stmt->fetch();
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <style>
+        body { font-family: system-ui; margin: 0; background: #f3f4f6; }
+        .header { background: #2563eb; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .btn { padding: 8px 16px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Admin Dashboard</h1>
+        <div>
+            Welcome, <?php echo htmlspecialchars($user["username"]); ?>
+            <a href="?logout=1" class="btn">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h3>Total Form Submissions: <?php echo $stats["total"]; ?></h3>
+            <p>Contact form system is running successfully!</p>
+            <a href="../" class="btn" style="background: #2563eb;">View Contact Form</a>
+        </div>
+    </div>
+</body>
+</html>
+<?php
+if (isset($_GET["logout"])) {
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+?>';
+
+            // Write admin files
+            if (!file_put_contents(ADMIN_DIR . '/login.php', $login_content)) {
+                throw new Exception('Failed to create admin login file');
+            }
+
+            if (!file_put_contents(ADMIN_DIR . '/index.php', $dashboard_content)) {
+                throw new Exception('Failed to create admin dashboard file');
+            }
+
+            return ['success' => true, 'message' => 'Admin files created successfully'];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Failed to create admin files: ' . $e->getMessage()];
+        }
+    }
+
+    private static function getSiteUrl() {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $path = dirname($_SERVER['SCRIPT_NAME'] ?? '');
+        return rtrim($protocol . $host . $path, '/');
+    }
+}
+
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
@@ -412,6 +614,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             } catch (PDOException $e) {
                 echo json_encode(['success' => false, 'message' => 'Failed to create admin account: ' . $e->getMessage()]);
+            }
+            break;
+
+        case 'install_system':
+            $db_config = $_SESSION['db_config'] ?? null;
+            if (!$db_config) {
+                echo json_encode(['success' => false, 'message' => 'Database configuration not found']);
+                break;
+            }
+
+            try {
+                // Create admin directory structure
+                $admin_result = AdminGenerator::createDirectoryStructure();
+                if (!$admin_result['success']) {
+                    throw new Exception($admin_result['message']);
+                }
+
+                // Generate config.php file
+                $config_result = AdminGenerator::generateConfigFile($db_config);
+                if (!$config_result['success']) {
+                    throw new Exception($config_result['message']);
+                }
+
+                // Create basic admin files
+                $admin_files_result = AdminGenerator::createAdminFiles();
+                if (!$admin_files_result['success']) {
+                    throw new Exception($admin_files_result['message']);
+                }
+
+                // Mark installation as complete
+                file_put_contents('.installation_complete', date('Y-m-d H:i:s'));
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'System installation completed successfully',
+                    'admin_url' => 'admin/',
+                    'contact_form_url' => './'
+                ]);
+
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'System installation failed: ' . $e->getMessage()]);
             }
             break;
 
@@ -1001,6 +1244,66 @@ if (!$wizard->isValidStep($current_step)) {
                 </div>
             </div>
 
+            <!-- Step 4: System Installation -->
+            <div class="step-content <?php echo $current_step === 4 ? 'active' : ''; ?>" id="step-4">
+                <div class="step-title">Install System</div>
+                <div class="step-description">
+                    Congratulations! Setting up admin interface and finalizing installation.
+                </div>
+
+                <div class="message success" style="display: block; margin: 20px 0;">
+                    🎉 <strong>Excellent Progress!</strong> Database and admin account created successfully.
+                    Now generating admin interface files...
+                </div>
+
+                <div class="loading active" id="system-loading">
+                    <div class="spinner"></div>
+                    <span>Generating admin interface...</span>
+                </div>
+
+                <div id="system-progress"></div>
+                <div id="system-messages"></div>
+
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="previousStep(4)">
+                        ← Back
+                    </button>
+                    <button class="btn btn-primary" id="next-step-4" onclick="nextStep(4)" disabled>
+                        Complete Installation →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 5: Installation Complete -->
+            <div class="step-content <?php echo $current_step === 5 ? 'active' : ''; ?>" id="step-5">
+                <div class="step-title">Installation Complete</div>
+                <div class="step-description">
+                    Your GlowHost Contact Form System is ready to use!
+                </div>
+
+                <div class="message success" style="display: block; margin: 20px 0;">
+                    ✅ <strong>Installation Successful!</strong> Your contact form system is now ready.
+                </div>
+
+                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="margin-bottom: 12px;">Next Steps:</h4>
+                    <ul style="margin-left: 20px; line-height: 1.6;">
+                        <li><strong>Access Admin Panel:</strong> <a href="admin/" target="_blank">admin/</a></li>
+                        <li><strong>View Contact Form:</strong> <a href="./" target="_blank">Contact Form</a></li>
+                        <li><strong>Login Credentials:</strong> Username: admin, Password: [as entered]</li>
+                    </ul>
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="window.location.href='admin/'">
+                        Access Admin Panel
+                    </button>
+                    <button class="btn btn-primary" onclick="window.location.href='./'">
+                        View Contact Form
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -1010,6 +1313,9 @@ if (!$wizard->isValidStep($current_step)) {
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('step-1').classList.contains('active')) {
                 runEnvironmentChecks();
+            }
+            if (document.getElementById('step-4').classList.contains('active')) {
+                installSystem();
             }
         });
 
@@ -1170,6 +1476,30 @@ if (!$wizard->isValidStep($current_step)) {
                 }
             } catch (error) {
                 showMessage('❌ Admin account creation failed: ' + error.message, 'error', 'admin-messages');
+            }
+        }
+
+        async function installSystem() {
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=install_system&csrf_token=${csrfToken}`
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('system-loading').classList.remove('active');
+                    showMessage('✅ ' + result.message, 'success', 'system-messages');
+                    document.getElementById('next-step-4').disabled = false;
+                } else {
+                    document.getElementById('system-loading').classList.remove('active');
+                    showMessage('❌ ' + result.message, 'error', 'system-messages');
+                }
+            } catch (error) {
+                document.getElementById('system-loading').classList.remove('active');
+                showMessage('❌ System installation failed: ' + error.message, 'error', 'system-messages');
             }
         }
 
