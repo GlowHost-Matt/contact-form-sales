@@ -542,14 +542,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $username = $_POST['db_username'] ?? '';
             $password = $_POST['db_password'] ?? '';
             $database = $_POST['db_name'] ?? '';
-            $create_db = isset($_POST['create_database']);
-
-            if ($create_db) {
-                $create_result = DatabaseManager::createDatabase($host, $username, $password, $database);
-                if (!$create_result['success']) {
-                    echo json_encode($create_result);
-                    break;
-                }
+            // Always attempt to create database automatically
+            $create_result = DatabaseManager::createDatabase($host, $username, $password, $database);
+            if (!$create_result['success']) {
+                // Database creation failed - try to proceed with existing database
+                // This will fail gracefully if database doesn't exist
             }
 
             $schema_result = DatabaseManager::installSchema($host, $username, $password, $database);
@@ -1149,7 +1146,7 @@ if (!$wizard->isValidStep($current_step)) {
             <div class="step-content <?php echo $current_step === 2 ? 'active' : ''; ?>" id="step-2">
                 <div class="step-title">Database Setup</div>
                 <div class="step-description">
-                    Configure your MySQL database connection and install the required tables.
+                    Configure your MySQL database connection. The installer will automatically create the database and install required tables.
                 </div>
 
                 <form id="database-form">
@@ -1174,10 +1171,6 @@ if (!$wizard->isValidStep($current_step)) {
                         <input type="password" class="form-input" id="db_password" name="db_password">
                     </div>
 
-                    <div class="checkbox">
-                        <input type="checkbox" id="create_database" name="create_database">
-                        <label for="create_database">Create database if it doesn't exist</label>
-                    </div>
 
                     <button type="button" class="btn btn-outline" onclick="testDatabase()">
                         Test Connection
@@ -1191,7 +1184,7 @@ if (!$wizard->isValidStep($current_step)) {
                         ← Back
                     </button>
                     <button class="btn btn-primary" id="next-step-2" onclick="installDatabase()" disabled>
-                        Install Database →
+                        Create Database & Install Tables →
                     </button>
                 </div>
             </div>
