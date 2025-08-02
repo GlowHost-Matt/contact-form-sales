@@ -1,1581 +1,1074 @@
 <?php
 /**
- * GlowHost Contact Form System - One-Click Installer
- * Version: 1.6 - With Self-Update Feature
+ * GlowHost Contact Form System - Progressive Installation Wizard
+ * Version: 3.0.0 - Complete Backend Platform
+ *
+ * Professional installation wizard for creating database-driven contact form system
+ * with admin interface, user management, and comprehensive backend capabilities.
  */
 
 // Configuration
-define('INSTALLER_VERSION', '2.0.0');
-define('PACKAGE_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/releases/download/v2.0.0/contact-form-v2.0.0-deployment.zip');
-define('PACKAGE_DIR', '.');
-define('LOG_FILE', __DIR__ . '/installer.log');
-define('TESTING_MODE', true);
+define('INSTALLER_VERSION', '3.0.0');
+define('MIN_PHP_VERSION', '7.4.0');
+define('RECOMMENDED_PHP_VERSION', '8.1.0');
 
-// Self-update configuration
-define('INSTALLER_GITHUB_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/installer.php');
-define('BACKUP_FILE', __DIR__ . '/installer.php.backup');
-define('UPDATE_LOG_FILE', __DIR__ . '/installer_updates.log');
+// Installation constants
+define('CONFIG_FILE', 'config.php');
+define('ADMIN_DIR', 'admin');
+define('ASSETS_DIR', 'assets');
+define('API_DIR', 'api');
 
-// PHP Settings
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-session_start();
-define('TEMP_DIR', __DIR__ . '/installer_temp_' . session_id());
-
-/**
- * Remove directory recursively
- */
-function removeDirectory($directory) {
-    if (!is_dir($directory)) return false;
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::CHILD_FIRST
-    );
-    foreach ($iterator as $item) {
-        if ($item->isDir()) {
-            rmdir($item->getRealPath());
-        } else {
-            unlink($item->getRealPath());
-        }
-    }
-    rmdir($directory);
-    return true;
+// Security and session management
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-/**
- * COMPREHENSIVE CLEANUP FUNCTION
- */
-function comprehensiveCleanup() {
-    $items_removed = 0;
-    $cleanup_log = [];
-
-    // Installation markers and state files
-    $markers = [
-        '.installer_complete',
-        '.env.local',
-        'next-env.d.ts',
-        'tsconfig.tsbuildinfo'
-    ];
-
-    foreach ($markers as $marker) {
-        $path = __DIR__ . '/' . $marker;
-        if (file_exists($path)) {
-            unlink($path);
-            $items_removed++;
-            $cleanup_log[] = "Removed marker: $marker";
-        }
-    }
-
-    // Installation directories
-    $directories = [
-        'install',
-        'src',
-        'config',
-        'api',
-        'scripts',
-        'Contact-Form-Sales',
-        'contact-form-sales',
-        '.next',
-        'node_modules',
-        'out'
-    ];
-
-    foreach ($directories as $dir) {
-        $path = __DIR__ . '/' . $dir;
-        if (is_dir($path)) {
-            removeDirectory($path);
-            $items_removed++;
-            $cleanup_log[] = "Removed directory: $dir";
-        }
-    }
-
-    // Configuration files
-    $config_files = [
-        'package.json',
-        'package-lock.json',
-        'next.config.js',
-        'tsconfig.json',
-        'tailwind.config.ts',
-        'biome.json',
-        'eslint.config.mjs',
-        'components.json',
-        'postcss.config.mjs',
-        'netlify.toml',
-        'bun.lock',
-        '.gitignore'
-    ];
-
-    foreach ($config_files as $file) {
-        $path = __DIR__ . '/' . $file;
-        if (file_exists($path)) {
-            unlink($path);
-            $items_removed++;
-            $cleanup_log[] = "Removed config: $file";
-        }
-    }
-
-    // Documentation files
-    $docs = [
-        'README.md',
-        'START-HERE-AI.md',
-        'DEPLOYMENT.md',
-        'DATABASE_INTEGRATION.md'
-    ];
-
-    foreach ($docs as $doc) {
-        $path = __DIR__ . '/' . $doc;
-        if (file_exists($path)) {
-            unlink($path);
-            $items_removed++;
-            $cleanup_log[] = "Removed doc: $doc";
-        }
-    }
-
-    // Debug and test files
-    $debug_files = [
-        'installer-debug.php',
-        'installer-fixed.php',
-        'installer-reset.php',
-        'installer-reset-clean.php',
-        'line-97-debug.php',
-        'installer-ajax-debug.php',
-        'webhook-deploy-secure.php',
-        'webhook-htaccess-security.txt'
-    ];
-
-    foreach ($debug_files as $file) {
-        $path = __DIR__ . '/' . $file;
-        if (file_exists($path)) {
-            unlink($path);
-            $items_removed++;
-            $cleanup_log[] = "Removed debug file: $file";
-        }
-    }
-
-    // Temp directories
-    $temp_dirs = glob(__DIR__ . '/installer_temp_*');
-    foreach ($temp_dirs as $temp_dir) {
-        if (is_dir($temp_dir)) {
-            removeDirectory($temp_dir);
-            $items_removed++;
-            $cleanup_log[] = "Removed temp: " . basename($temp_dir);
-        }
-    }
-
-    // Log files
-    $logs = ['installer.log', 'reset.log', 'error.log'];
-    foreach ($logs as $log) {
-        $path = __DIR__ . '/' . $log;
-        if (file_exists($path)) {
-            unlink($path);
-            $items_removed++;
-            $cleanup_log[] = "Removed log: $log";
-        }
-    }
-
-    // Archives
-    $archives = glob(__DIR__ . '/*.zip');
-    foreach ($archives as $archive) {
-        unlink($archive);
-        $items_removed++;
-        $cleanup_log[] = "Removed archive: " . basename($archive);
-    }
-
-    // Optional: Remove .htaccess if it was created during installation
-    $htaccess = __DIR__ . '/.htaccess';
-    if (file_exists($htaccess)) {
-        // Only remove if it looks like it was created by our installer
-        $content = file_get_contents($htaccess);
-        if (strpos($content, 'RewriteEngine') !== false || strpos($content, 'Next.js') !== false) {
-            unlink($htaccess);
-            $items_removed++;
-            $cleanup_log[] = "Removed installer .htaccess";
-        }
-    }
-
-    return [
-        'items_removed' => $items_removed,
-        'cleanup_log' => $cleanup_log
-    ];
-}
-
-/**
- * SELF-UPDATE FUNCTIONS
- */
-function checkForUpdates() {
-    logUpdateMessage('Checking for installer updates...');
-
-    try {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, INSTALLER_GITHUB_URL);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'GlowHost-Contact-Form-Installer/' . INSTALLER_VERSION);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-
-        $remote_content = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        if ($error) {
-            throw new Exception('Failed to fetch remote installer: ' . $error);
-        }
-
-        if ($http_code !== 200) {
-            throw new Exception('HTTP error: ' . $http_code);
-        }
-
-        if (!$remote_content) {
-            throw new Exception('No content received from remote server');
-        }
-
-        // Extract version from remote file
-        preg_match("/define\('INSTALLER_VERSION',\s*'([^']+)'\)/", $remote_content, $matches);
-        $remote_version = $matches[1] ?? 'unknown';
-
-        $current_version = INSTALLER_VERSION;
-        $update_available = version_compare($remote_version, $current_version, '>');
-
-        return [
-            'success' => true,
-            'current_version' => $current_version,
-            'remote_version' => $remote_version,
-            'update_available' => $update_available,
-            'remote_content' => $remote_content
-        ];
-
-    } catch (Exception $e) {
-        logUpdateMessage('Error checking for updates: ' . $e->getMessage());
-        return [
-            'success' => false,
-            'error' => $e->getMessage()
-        ];
-    }
-}
-
-function updateInstaller() {
-    logUpdateMessage('Starting installer self-update process...');
-
-    try {
-        // Check for updates first
-        $update_check = checkForUpdates();
-        if (!$update_check['success']) {
-            throw new Exception('Update check failed: ' . $update_check['error']);
-        }
-
-        if (!$update_check['update_available']) {
-            return [
-                'success' => true,
-                'message' => 'Already running the latest version (' . $update_check['current_version'] . ')',
-                'updated' => false
-            ];
-        }
-
-        $remote_content = $update_check['remote_content'];
-        $new_version = $update_check['remote_version'];
-        $current_version = $update_check['current_version'];
-
-        // Validate PHP syntax of new version
-        $temp_file = TEMP_DIR . '/installer_new.php';
-        if (!file_exists(TEMP_DIR)) {
-            mkdir(TEMP_DIR, 0755, true);
-        }
-
-        file_put_contents($temp_file, $remote_content);
-
-        // Check PHP syntax
-        $syntax_check = shell_exec("php -l " . escapeshellarg($temp_file) . " 2>&1");
-        if (strpos($syntax_check, 'No syntax errors') === false) {
-            unlink($temp_file);
-            throw new Exception('New installer has PHP syntax errors: ' . $syntax_check);
-        }
-
-        // Backup current installer
-        $current_file = __FILE__;
-        if (!copy($current_file, BACKUP_FILE)) {
-            unlink($temp_file);
-            throw new Exception('Failed to create backup of current installer');
-        }
-
-        // Replace current installer with new version
-        if (!copy($temp_file, $current_file)) {
-            // Restore backup on failure
-            copy(BACKUP_FILE, $current_file);
-            unlink($temp_file);
-            throw new Exception('Failed to update installer file');
-        }
-
-        // Cleanup temp file
-        unlink($temp_file);
-
-        logUpdateMessage("Successfully updated installer from v{$current_version} to v{$new_version}");
-
-        return [
-            'success' => true,
-            'message' => "Successfully updated from v{$current_version} to v{$new_version}",
-            'updated' => true,
-            'old_version' => $current_version,
-            'new_version' => $new_version,
-            'backup_file' => basename(BACKUP_FILE)
-        ];
-
-    } catch (Exception $e) {
-        logUpdateMessage('Update failed: ' . $e->getMessage());
-        return [
-            'success' => false,
-            'error' => $e->getMessage()
-        ];
-    }
-}
-
-function rollbackInstaller() {
-    logUpdateMessage('Starting installer rollback...');
-
-    try {
-        if (!file_exists(BACKUP_FILE)) {
-            throw new Exception('No backup file found. Cannot rollback.');
-        }
-
-        $current_file = __FILE__;
-
-        // Create a backup of current version before rollback (just in case)
-        $emergency_backup = __DIR__ . '/installer.php.emergency_backup';
-        copy($current_file, $emergency_backup);
-
-        // Restore from backup
-        if (!copy(BACKUP_FILE, $current_file)) {
-            throw new Exception('Failed to restore from backup');
-        }
-
-        logUpdateMessage('Successfully rolled back installer');
-
-        return [
-            'success' => true,
-            'message' => 'Successfully rolled back to previous version',
-            'emergency_backup' => basename($emergency_backup)
-        ];
-
-    } catch (Exception $e) {
-        logUpdateMessage('Rollback failed: ' . $e->getMessage());
-        return [
-            'success' => false,
-            'error' => $e->getMessage()
-        ];
-    }
-}
-
-function getUpdateHistory() {
-    $history = [];
-    if (file_exists(UPDATE_LOG_FILE)) {
-        $lines = file(UPDATE_LOG_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        $history = array_slice(array_reverse($lines), 0, 10); // Last 10 entries
-    }
-    return $history;
-}
-
-function logUpdateMessage($message) {
-    $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[{$timestamp}] {$message}\n";
-    @file_put_contents(UPDATE_LOG_FILE, $log_entry, FILE_APPEND | LOCK_EX);
-
-    // Also log to main installer log
-    logMessage('UPDATE: ' . $message);
-}
-
-/**
- * Testing functions with comprehensive cleanup
- */
-if (TESTING_MODE) {
-    // Enhanced reset with comprehensive cleanup
-    if (isset($_GET['action']) && $_GET['action'] === 'reset') {
-        $result = comprehensiveCleanup();
-
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'message' => "Comprehensive cleanup complete: {$result['items_removed']} items removed",
-            'items_removed' => $result['items_removed'],
-            'cleanup_log' => $result['cleanup_log']
-        ]);
-        exit;
-    }
-
-    // Nuclear option - complete filesystem reset
-    if (isset($_GET['action']) && $_GET['action'] === 'nuclear_reset') {
-        $result = comprehensiveCleanup();
-
-        // Also remove any remaining files that might be installation-related
-        $all_files = scandir(__DIR__);
-        $protected_files = ['.', '..', 'installer.php', '.same', '.well-known'];
-        $additional_removed = 0;
-
-        foreach ($all_files as $file) {
-            if (!in_array($file, $protected_files)) {
-                $path = __DIR__ . '/' . $file;
-                if (is_file($path)) {
-                    // Be extra careful - only remove known file types
-                    $ext = pathinfo($file, PATHINFO_EXTENSION);
-                    $safe_extensions = ['php', 'js', 'json', 'md', 'txt', 'yml', 'yaml', 'log', 'zip'];
-                    if (in_array($ext, $safe_extensions)) {
-                        unlink($path);
-                        $additional_removed++;
-                        $result['cleanup_log'][] = "Nuclear: removed $file";
-                    }
-                } elseif (is_dir($path)) {
-                    removeDirectory($path);
-                    $additional_removed++;
-                    $result['cleanup_log'][] = "Nuclear: removed directory $file";
-                }
-            }
-        }
-
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'message' => "Nuclear reset complete: " . ($result['items_removed'] + $additional_removed) . " total items removed",
-            'items_removed' => $result['items_removed'] + $additional_removed,
-            'cleanup_log' => $result['cleanup_log']
-        ]);
-        exit;
-    }
-
-    if (isset($_GET['action']) && $_GET['action'] === 'clear_logs') {
-        $logs_cleared = 0;
-        $log_files = ['installer.log', 'reset.log', 'error.log'];
-        foreach ($log_files as $log_file) {
-            $path = __DIR__ . '/' . $log_file;
-            if (file_exists($path)) {
-                unlink($path);
-                $logs_cleared++;
-            }
-        }
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'message' => "Cleared {$logs_cleared} log files"
-        ]);
-        exit;
-    }
-
-    // Self-update endpoints
-    if (isset($_GET['action']) && $_GET['action'] === 'check_updates') {
-        header('Content-Type: application/json');
-        echo json_encode(checkForUpdates());
-        exit;
-    }
-
-    if (isset($_GET['action']) && $_GET['action'] === 'update_installer') {
-        header('Content-Type: application/json');
-        echo json_encode(updateInstaller());
-        exit;
-    }
-
-    if (isset($_GET['action']) && $_GET['action'] === 'rollback_installer') {
-        header('Content-Type: application/json');
-        echo json_encode(rollbackInstaller());
-        exit;
-    }
-
-    if (isset($_GET['action']) && $_GET['action'] === 'update_history') {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'history' => getUpdateHistory()
-        ]);
-        exit;
-    }
-}
-
-/**
- * System check
- */
-function runSystemCheck() {
-    $checks = [];
-
-    $php_version = PHP_VERSION;
-    $php_ok = version_compare($php_version, '7.4.0', '>=') && version_compare($php_version, '8.3.0', '<=');
-    $checks['php_version'] = [
-        'name' => 'PHP Version',
-        'value' => $php_version,
-        'status' => $php_ok ? 'OK' : 'ERROR',
-        'message' => $php_ok ? 'Compatible' : 'Requires PHP 7.4 - 8.2'
-    ];
-
-    $required_extensions = ['curl', 'zip', 'json', 'session'];
-    foreach ($required_extensions as $ext) {
-        $loaded = extension_loaded($ext);
-        $checks["ext_{$ext}"] = [
-            'name' => "{$ext} Extension",
-            'value' => $loaded ? 'Loaded' : 'Missing',
-            'status' => $loaded ? 'OK' : 'ERROR',
-            'message' => $loaded ? 'Available' : 'Required extension missing'
-        ];
-    }
-
-    $writable = is_writable(__DIR__);
-    $checks['write_permissions'] = [
-        'name' => 'Write Permissions',
-        'value' => $writable ? 'Writable' : 'Not Writable',
-        'status' => $writable ? 'OK' : 'ERROR',
-        'message' => $writable ? 'Directory is writable' : 'Cannot write to directory'
-    ];
-
-    return $checks;
-}
-
-// Handle AJAX requests
-$get_action = isset($_GET['action']) ? $_GET['action'] : '';
-$post_action = isset($_POST['action']) ? $_POST['action'] : '';
-if ($get_action === 'install' || $post_action === 'install') {
-    header('Content-Type: application/json');
-
-    if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-
-    $post_csrf = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
-    $session_csrf = isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : '';
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($post_csrf, $session_csrf)) {
-        echo json_encode(['success' => false, 'error' => 'CSRF token mismatch']);
-        exit;
-    }
-
-    try {
-        $get_step = isset($_GET['step']) ? $_GET['step'] : '';
-        $post_step = isset($_POST['step']) ? $_POST['step'] : '';
-        $step = $get_step ?: $post_step ?: 'check';
-
-        switch ($step) {
-            case 'check':
-                echo json_encode(checkSystemRequirements());
-                break;
-            case 'download':
-                echo json_encode(downloadPackage());
-                break;
-            case 'extract':
-                echo json_encode(extractPackage());
-                break;
-            case 'deploy':
-                echo json_encode(deployFiles());
-                break;
-            case 'cleanup':
-                echo json_encode(cleanupInstaller());
-                break;
-            default:
-                throw new Exception('Invalid installation step: ' . $step);
-        }
-    } catch (Exception $e) {
-        logMessage('ERROR: ' . $e->getMessage());
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage()
-        ]);
-    }
-    exit;
-}
-
-/**
- * Installation functions
- */
-function checkSystemRequirements() {
-    $requirements = runSystemCheck();
-    $all_passed = true;
-    foreach ($requirements as $req) {
-        if ($req['status'] === 'ERROR') {
-            $all_passed = false;
-            break;
-        }
-    }
-    return [
-        'success' => true,
-        'requirements' => $requirements,
-        'all_passed' => $all_passed,
-        'message' => $all_passed ? 'All requirements met' : 'Some requirements not met'
-    ];
-}
-
-function downloadPackage() {
-    logMessage('Starting package download from: ' . PACKAGE_URL);
-
-    if (!file_exists(TEMP_DIR)) {
-        if (!mkdir(TEMP_DIR, 0755, true)) {
-            throw new Exception('Failed to create temp directory: ' . TEMP_DIR);
-        }
-    }
-
-    $zip_file = TEMP_DIR . '/package.zip';
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, PACKAGE_URL);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 300);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'GlowHost-Contact-Form-Installer/' . INSTALLER_VERSION);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-    $data = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
-
-    if ($error) {
-        throw new Exception('Download failed: ' . $error);
-    }
-    if ($http_code !== 200) {
-        throw new Exception('Download failed with HTTP code: ' . $http_code);
-    }
-    if (!$data) {
-        throw new Exception('No data received from download');
-    }
-
-    $bytes_written = file_put_contents($zip_file, $data);
-    if ($bytes_written === false) {
-        throw new Exception('Failed to save downloaded package');
-    }
-
-    logMessage('Package downloaded successfully: ' . formatBytes($bytes_written));
-
-    return [
-        'success' => true,
-        'message' => 'Package downloaded successfully',
-        'size' => formatBytes($bytes_written),
-        'file' => $zip_file
-    ];
-}
-
-function extractPackage() {
-    $zip_file = TEMP_DIR . '/package.zip';
-
-    if (!file_exists($zip_file)) {
-        throw new Exception('Package file not found: ' . $zip_file);
-    }
-
-    $zip = new ZipArchive();
-    $result = $zip->open($zip_file);
-    if ($result !== TRUE) {
-        throw new Exception('Failed to open ZIP file: ' . $result);
-    }
-
-    $extract_path = TEMP_DIR . '/extracted';
-    if (!$zip->extractTo($extract_path)) {
-        throw new Exception('Failed to extract ZIP file');
-    }
-    $zip->close();
-
-    $package_path = $extract_path . '/' . PACKAGE_DIR;
-    if (!is_dir($package_path)) {
-        throw new Exception('Package structure not found after extraction');
-    }
-
-    logMessage('Package extracted successfully to: ' . $package_path);
-
-    return [
-        'success' => true,
-        'message' => 'Package extracted successfully',
-        'path' => $package_path,
-        'files' => countFiles($package_path)
-    ];
-}
-
-function deployFiles() {
-    $source_path = TEMP_DIR . '/extracted/' . PACKAGE_DIR;
-    $target_path = __DIR__;
-
-    if (!is_dir($source_path)) {
-        throw new Exception('Source directory not found: ' . $source_path);
-    }
-
-    logMessage('FIXED DEPLOYMENT: Deploying files from ' . $source_path . ' directly to web root: ' . $target_path);
-
-    $files_copied = 0;
-    $items = scandir($source_path);
-
-    foreach ($items as $item) {
-        if ($item === '.' || $item === '..') {
-            continue;
-        }
-
-        $source_item = $source_path . '/' . $item;
-        $target_item = $target_path . '/' . $item;
-
-        if (strpos($item, 'installer') !== false) {
-            logMessage('Skipping installer file: ' . $item);
-            continue;
-        }
-
-        if (is_dir($source_item)) {
-            logMessage('Copying directory: ' . $item);
-            $files_copied += copyDirectoryContents($source_item, $target_item);
-        } else {
-            logMessage('Copying file: ' . $item);
-            if (copy($source_item, $target_item)) {
-                $files_copied++;
-            }
-        }
-    }
-
-    logMessage('FIXED DEPLOYMENT: Files deployed successfully - ' . $files_copied . ' files copied directly to web root');
-
-    return [
-        'success' => true,
-        'message' => 'Files deployed successfully to web root',
-        'files_copied' => $files_copied,
-        'install_url' => 'install/'
-    ];
-}
-
-function copyDirectoryContents($source, $destination) {
-    $files_copied = 0;
-
-    if (!is_dir($destination)) {
-        mkdir($destination, 0755, true);
-    }
-
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST
-    );
-
-    foreach ($iterator as $item) {
-        $target = $destination . '/' . $iterator->getSubPathName();
-
-        if ($item->isDir()) {
-            if (!is_dir($target)) {
-                mkdir($target, 0755, true);
-            }
-        } else {
-            $basename = basename($item);
-            if (strpos($basename, 'installer') === false) {
-                copy($item, $target);
-                $files_copied++;
-            }
-        }
-    }
-
-    return $files_copied;
-}
-
-function cleanupInstaller() {
-    logMessage('Starting cleanup process');
-
-    if (is_dir(TEMP_DIR)) {
-        removeDirectory(TEMP_DIR);
-        logMessage('Temporary directory cleaned: ' . TEMP_DIR);
-    }
-
-    file_put_contents(__DIR__ . '/.installer_complete', date('Y-m-d H:i:s'));
-
-    logMessage('Cleanup completed successfully - installation complete');
-
-    return [
-        'success' => true,
-        'message' => 'Installation completed successfully',
-        'redirect_url' => 'install/',
-        'cleanup_complete' => true
-    ];
-}
-
-function countFiles($directory) {
-    $count = 0;
-    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory));
-    foreach ($iterator as $file) {
-        if ($file->isFile()) {
-            $count++;
-        }
-    }
-    return $count;
-}
-
-function formatBytes($bytes, $precision = 2) {
-    $units = array('B', 'KB', 'MB', 'GB', 'TB');
-    for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
-        $bytes /= 1024;
-    }
-    return round($bytes, $precision) . ' ' . $units[$i];
-}
-
-function logMessage($message) {
-    $timestamp = date('Y-m-d H:i:s');
-    $log_entry = "[{$timestamp}] {$message}\n";
-    @file_put_contents(LOG_FILE, $log_entry, FILE_APPEND | LOCK_EX);
-}
-
-// Show installer interface
+// CSRF protection
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-$already_installed = file_exists(__DIR__ . '/.installer_complete') || file_exists(__DIR__ . '/install/index.php');
-$system_checks = runSystemCheck();
+/**
+ * INSTALLATION STEP MANAGER
+ */
+class InstallationWizard {
+
+    private $steps = [
+        1 => ['name' => 'Environment Check', 'function' => 'checkEnvironment'],
+        2 => ['name' => 'Database Setup', 'function' => 'setupDatabase'],
+        3 => ['name' => 'Admin Account', 'function' => 'createAdminUser'],
+        4 => ['name' => 'Install System', 'function' => 'installSystem'],
+        5 => ['name' => 'Complete', 'function' => 'completeInstallation']
+    ];
+
+    public function getCurrentStep() {
+        return isset($_GET['step']) ? (int)$_GET['step'] : 1;
+    }
+
+    public function getStepName($step) {
+        return $this->steps[$step]['name'] ?? 'Unknown Step';
+    }
+
+    public function getStepFunction($step) {
+        return $this->steps[$step]['function'] ?? null;
+    }
+
+    public function getTotalSteps() {
+        return count($this->steps);
+    }
+
+    public function isValidStep($step) {
+        return isset($this->steps[$step]);
+    }
+}
+
+/**
+ * WEB ROOT VERIFICATION SYSTEM
+ */
+class WebRootVerifier {
+
+    public static function verify() {
+        $checks = [];
+
+        // Check 1: Document root detection
+        $document_root = $_SERVER['DOCUMENT_ROOT'] ?? '';
+        $current_dir = dirname(__FILE__);
+        $checks['document_root'] = [
+            'name' => 'Web Root Location',
+            'status' => ($document_root === $current_dir),
+            'message' => ($document_root === $current_dir) ?
+                'Installer is in web root' :
+                'Warning: Installer may not be in web root',
+            'critical' => false
+        ];
+
+        // Check 2: Directory permissions
+        $writable = is_writable($current_dir);
+        $checks['permissions'] = [
+            'name' => 'Write Permissions',
+            'status' => $writable,
+            'message' => $writable ?
+                'Directory is writable' :
+                'Directory is not writable',
+            'critical' => true
+        ];
+
+        // Check 3: Clean installation
+        $admin_exists = is_dir(ADMIN_DIR);
+        $checks['clean_install'] = [
+            'name' => 'Clean Installation',
+            'status' => !$admin_exists,
+            'message' => !$admin_exists ?
+                'Ready for installation' :
+                'Admin directory already exists',
+            'critical' => true
+        ];
+
+        return $checks;
+    }
+
+    public static function canProceed($checks) {
+        foreach ($checks as $check) {
+            if ($check['critical'] && !$check['status']) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+/**
+ * ENVIRONMENT CHECKER
+ */
+class EnvironmentChecker {
+
+    public static function checkPHP() {
+        $version = PHP_VERSION;
+        $min_met = version_compare($version, MIN_PHP_VERSION, '>=');
+        $recommended_met = version_compare($version, RECOMMENDED_PHP_VERSION, '>=');
+
+        return [
+            'name' => 'PHP Version',
+            'status' => $min_met,
+            'level' => $recommended_met ? 'excellent' : ($min_met ? 'good' : 'error'),
+            'message' => $min_met ?
+                ($recommended_met ? "PHP $version (Excellent)" : "PHP $version (Compatible)") :
+                "PHP $version (Requires " . MIN_PHP_VERSION . "+)",
+            'critical' => true
+        ];
+    }
+
+    public static function checkExtensions() {
+        $required = [
+            'mysqli' => ['name' => 'MySQL Support', 'critical' => true],
+            'pdo' => ['name' => 'PDO Support', 'critical' => true],
+            'json' => ['name' => 'JSON Support', 'critical' => true],
+            'session' => ['name' => 'Session Support', 'critical' => true],
+            'hash' => ['name' => 'Hash Support', 'critical' => true],
+            'mbstring' => ['name' => 'Multibyte Strings', 'critical' => false],
+            'curl' => ['name' => 'cURL Support', 'critical' => false]
+        ];
+
+        $results = [];
+        foreach ($required as $ext => $config) {
+            $loaded = extension_loaded($ext);
+
+            $results[$ext] = [
+                'name' => $config['name'],
+                'status' => $loaded,
+                'message' => $loaded ? 'Available' : 'Not available',
+                'critical' => $config['critical']
+            ];
+        }
+
+        return $results;
+    }
+
+    public static function runAllChecks() {
+        $results = [
+            'php' => self::checkPHP(),
+            'extensions' => self::checkExtensions()
+        ];
+
+        return $results;
+    }
+
+    public static function canProceed($results) {
+        // Check PHP version
+        if (!$results['php']['status']) return false;
+
+        // Check required extensions
+        foreach ($results['extensions'] as $ext => $check) {
+            if ($check['critical'] && !$check['status']) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+/**
+ * DATABASE MANAGER
+ */
+class DatabaseManager {
+
+    public static function testConnection($host, $username, $password, $database = null) {
+        try {
+            $dsn = "mysql:host=$host";
+            if ($database) {
+                $dsn .= ";dbname=$database";
+            }
+
+            $pdo = new PDO($dsn, $username, $password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
+
+            return ['success' => true, 'message' => 'Connection successful'];
+
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Connection failed: ' . $e->getMessage()];
+        }
+    }
+
+    public static function createDatabase($host, $username, $password, $database) {
+        try {
+            $pdo = new PDO("mysql:host=$host", $username, $password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `$database` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+            return ['success' => true, 'message' => "Database '$database' created successfully"];
+
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Database creation failed: ' . $e->getMessage()];
+        }
+    }
+
+    public static function installSchema($host, $username, $password, $database) {
+        try {
+            $pdo = new PDO("mysql:host=$host;dbname=$database", $username, $password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+
+            // Admin users table
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS admin_users (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    email VARCHAR(100) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    role ENUM('super_admin', 'admin') DEFAULT 'admin',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_login TIMESTAMP NULL,
+                    status ENUM('active', 'inactive') DEFAULT 'active'
+                ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            ");
+
+            // Form submissions table
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS form_submissions (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    name VARCHAR(100) NOT NULL,
+                    email VARCHAR(100) NOT NULL,
+                    subject VARCHAR(200) NOT NULL,
+                    message TEXT NOT NULL,
+                    attachments JSON NULL,
+                    ip_address VARCHAR(45) NULL,
+                    user_agent TEXT NULL,
+                    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status ENUM('new', 'read', 'responded', 'archived') DEFAULT 'new',
+                    admin_notes TEXT NULL
+                ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            ");
+
+            // System settings table
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS settings (
+                    key_name VARCHAR(50) PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    description TEXT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            ");
+
+            // Insert default settings
+            $default_settings = [
+                ['site_title', 'GlowHost Contact Form System', 'Main site title'],
+                ['admin_email', '', 'Primary admin email for notifications'],
+                ['form_notifications', '1', 'Enable email notifications for form submissions'],
+                ['max_file_size', '10485760', 'Maximum file upload size in bytes (10MB)'],
+                ['allowed_file_types', 'jpg,jpeg,png,gif,pdf,txt,doc,docx', 'Allowed file extensions'],
+                ['installation_date', date('Y-m-d H:i:s'), 'System installation timestamp']
+            ];
+
+            $stmt = $pdo->prepare("INSERT IGNORE INTO settings (key_name, value, description) VALUES (?, ?, ?)");
+            foreach ($default_settings as $setting) {
+                $stmt->execute($setting);
+            }
+
+            return ['success' => true, 'message' => 'Database schema installed successfully'];
+
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Schema installation failed: ' . $e->getMessage()];
+        }
+    }
+}
+
+// Handle AJAX requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
+
+    // CSRF protection
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+        exit;
+    }
+
+    $action = $_POST['action'];
+
+    switch ($action) {
+        case 'check_environment':
+            $web_root = WebRootVerifier::verify();
+            $environment = EnvironmentChecker::runAllChecks();
+
+            $can_proceed = WebRootVerifier::canProceed($web_root) &&
+                          EnvironmentChecker::canProceed($environment);
+
+            echo json_encode([
+                'success' => true,
+                'web_root' => $web_root,
+                'environment' => $environment,
+                'can_proceed' => $can_proceed
+            ]);
+            break;
+
+        case 'test_database':
+            $host = $_POST['db_host'] ?? '';
+            $username = $_POST['db_username'] ?? '';
+            $password = $_POST['db_password'] ?? '';
+            $database = $_POST['db_name'] ?? '';
+
+            $result = DatabaseManager::testConnection($host, $username, $password, $database);
+            echo json_encode($result);
+            break;
+
+        case 'install_database':
+            $host = $_POST['db_host'] ?? '';
+            $username = $_POST['db_username'] ?? '';
+            $password = $_POST['db_password'] ?? '';
+            $database = $_POST['db_name'] ?? '';
+            $create_db = isset($_POST['create_database']);
+
+            if ($create_db) {
+                $create_result = DatabaseManager::createDatabase($host, $username, $password, $database);
+                if (!$create_result['success']) {
+                    echo json_encode($create_result);
+                    break;
+                }
+            }
+
+            $schema_result = DatabaseManager::installSchema($host, $username, $password, $database);
+            echo json_encode($schema_result);
+            break;
+
+        default:
+            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+    }
+    exit;
+}
+
+// Initialize wizard
+$wizard = new InstallationWizard();
+$current_step = $wizard->getCurrentStep();
+
+// Validate step
+if (!$wizard->isValidStep($current_step)) {
+    $current_step = 1;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlowHost Contact Form System - Installer</title>
+    <title>GlowHost Contact Form System - Installation</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --border: #e5e7eb;
+            --background: #f9fafb;
+            --white: #ffffff;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
         }
-        .installer-container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            max-width: 900px;
+
+        /* Container */
+        .installer {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
             width: 100%;
-            min-height: 600px;
+            max-width: 800px;
+            overflow: hidden;
         }
-        .installer-header {
-            background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
-            color: white;
+
+        /* Header */
+        .header {
+            background: var(--primary);
+            color: var(--white);
             padding: 32px;
             text-align: center;
         }
-        .installer-header h1 {
-            font-size: 28px;
-            font-weight: 700;
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
             margin-bottom: 8px;
         }
-        .installer-header p {
-            font-size: 16px;
+
+        .header p {
             opacity: 0.9;
+            font-size: 16px;
         }
-        .cleanup-notice {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #16a34a;
-            padding: 16px;
-            margin: 16px 32px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 600;
-        }
-        .system-check-container {
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
+
+        /* Progress */
+        .progress {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
             padding: 24px 32px;
         }
-        .system-checks {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
+
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            margin-bottom: 16px;
         }
-        .check-item {
+
+        .progress-bar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--border);
+            z-index: 1;
+        }
+
+        .step {
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-muted);
+            z-index: 2;
+            position: relative;
+        }
+
+        .step.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--white);
+        }
+
+        .step.completed {
+            border-color: var(--success);
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .step-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .step-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            flex: 1;
+        }
+
+        .step-label.active {
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .step-label.completed {
+            color: var(--success);
+        }
+
+        /* Content */
+        .content {
+            padding: 40px;
+        }
+
+        .step-content {
+            display: none;
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .step-description {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        /* Check Items */
+        .checks {
+            display: grid;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .check {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 16px;
-            border-radius: 8px;
-            border: 1px solid;
-            background: white;
+            transition: border-color 0.2s;
         }
-        .check-item.ok {
-            border-color: #10b981;
+
+        .check.success {
+            border-color: var(--success);
             background: #f0fdf4;
         }
-        .check-item.error {
-            border-color: #ef4444;
+
+        .check.warning {
+            border-color: var(--warning);
+            background: #fffbeb;
+        }
+
+        .check.error {
+            border-color: var(--error);
             background: #fef2f2;
         }
-        .installer-content { padding: 40px; }
-        .install-button {
-            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: 8px;
+
+        .check-icon {
             font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            margin: 16px 0;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
+            flex-shrink: 0;
         }
-        .install-button:disabled {
+
+        .check-content h4 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .check-content p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .checkbox input {
+            margin: 0;
+        }
+
+        .checkbox label {
+            font-size: 14px;
+            margin: 0;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
         }
-        .progress-bar {
-            width: 100%;
-            height: 12px;
-            background: #e2e8f0;
-            border-radius: 6px;
-            overflow: hidden;
+
+        .btn-secondary {
+            background: var(--text-secondary);
+            color: var(--white);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--text-primary);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        /* Actions */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Messages */
+        .message {
+            padding: 12px 16px;
+            border-radius: var(--radius);
             margin: 16px 0;
-            display: none;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4299e1 0%, #3182ce 100%);
-            border-radius: 6px;
-            transition: width 0.3s ease;
-            width: 0%;
-        }
-        .testing-tools {
-            margin-top: 40px;
-            padding: 30px;
-            background: linear-gradient(135deg, #fef3c7 0%, #f3f4f6 100%);
-            border: 2px solid #f59e0b;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .testing-tools h3 {
-            margin-bottom: 20px;
-            color: #92400e;
-            font-size: 1.5em;
-            text-align: center;
-        }
-        .reset-options-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 25px;
-        }
-        .reset-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 20px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .reset-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-        .reset-card.nuclear {
-            border: 2px solid #dc2626;
-            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
-        }
-        .reset-card.nuclear::before {
-            content: "⚠️ DANGER";
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: #dc2626;
-            color: white;
-            padding: 4px 12px;
-            font-size: 10px;
-            font-weight: bold;
-            border-bottom-left-radius: 8px;
-        }
-        .reset-card.safe {
-            border: 2px solid #10b981;
-            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
-        }
-        .reset-card.safe::before {
-            content: "✅ SAFE";
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: #10b981;
-            color: white;
-            padding: 4px 12px;
-            font-size: 10px;
-            font-weight: bold;
-            border-bottom-left-radius: 8px;
-        }
-        .reset-card.update {
-            border: 2px solid #3b82f6;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-        }
-        .reset-card.update::before {
-            content: "🔄 UPDATE";
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: #3b82f6;
-            color: white;
-            padding: 4px 12px;
-            font-size: 10px;
-            font-weight: bold;
-            border-bottom-left-radius: 8px;
-        }
-        .reset-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 12px;
+            font-size: 14px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        .reset-description {
-            color: #6b7280;
-            margin-bottom: 15px;
-            line-height: 1.5;
+
+        .message.success {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
         }
-        .reset-details {
-            background: #f9fafb;
-            border-radius: 6px;
-            padding: 12px;
-            margin: 12px 0;
-            font-size: 14px;
-        }
-        .reset-removes, .reset-keeps {
-            margin: 8px 0;
-        }
-        .reset-removes strong {
-            color: #dc2626;
-        }
-        .reset-keeps strong {
-            color: #10b981;
-        }
-        .reset-button {
-            width: 100%;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin-top: 15px;
-        }
-        .reset-button.comprehensive {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-        }
-        .reset-button.comprehensive:hover {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-            transform: translateY(-1px);
-        }
-        .reset-button.nuclear {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            color: white;
-            animation: pulse-red 2s infinite;
-        }
-        .reset-button.nuclear:hover {
-            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-            transform: translateY(-1px);
-        }
-        .reset-button.safe {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-        .reset-button.safe:hover {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-            transform: translateY(-1px);
-        }
-        .reset-button.update {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-        }
-        .reset-button.update:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            transform: translateY(-1px);
-        }
-        @keyframes pulse-red {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
-        }
-        .warning-text {
+
+        .message.error {
             background: #fef2f2;
+            color: #dc2626;
             border: 1px solid #fecaca;
-            color: #991b1b;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin: 10px 0;
-            font-weight: 500;
         }
-        .update-info {
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            color: #0369a1;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin: 10px 0;
+
+        .message.info {
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
         }
-        .update-available {
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-            color: #92400e;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin: 10px 0;
-            font-weight: 600;
+
+        /* Loading */
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
         }
-        .version-info {
+
+        .loading.active {
             display: flex;
-            justify-content: space-between;
-            margin: 10px 0;
-            font-size: 12px;
         }
-        .current-version {
-            color: #6b7280;
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
-        .new-version {
-            color: #059669;
-            font-weight: 600;
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        .update-history {
-            max-height: 150px;
-            overflow-y: auto;
-            background: #f9fafb;
-            border-radius: 6px;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: monospace;
-            font-size: 11px;
-            line-height: 1.4;
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .installer {
+                margin: 10px;
+            }
+
+            .header {
+                padding: 24px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .progress {
+                padding: 20px 24px;
+            }
+
+            .content {
+                padding: 24px;
+            }
+
+            .step {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+
+            .step-label {
+                font-size: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="installer-container">
-        <div class="installer-header">
-            <h1>🚀 GlowHost Contact Form System</h1>
-            <p>Professional One-Click Installer v<?php echo INSTALLER_VERSION; ?></p>
+    <div class="installer">
+        <div class="header">
+            <h1>GlowHost Contact Form System</h1>
+            <p>Installation Wizard v<?php echo INSTALLER_VERSION; ?></p>
         </div>
 
-        <div class="cleanup-notice">
-            ✅ <strong>ENHANCED:</strong> Built-in comprehensive filesystem cleanup + self-update feature!
-        </div>
-
-        <div class="system-check-container">
-            <h2>🔍 System Compatibility Check</h2>
-            <div class="system-checks">
-                <?php foreach ($system_checks as $check): ?>
-                <div class="check-item <?php echo strtolower($check['status']); ?>">
-                    <div>
-                        <?php if ($check['status'] === 'OK'): ?>
-                            ✅
-                        <?php else: ?>
-                            ❌
-                        <?php endif; ?>
-                    </div>
-                    <div>
-                        <div style="font-weight: 600;"><?php echo htmlspecialchars($check['name']); ?></div>
-                        <div style="font-size: 13px; font-family: monospace;"><?php echo htmlspecialchars($check['value']); ?></div>
-                        <div style="font-size: 12px; color: #6b7280;"><?php echo htmlspecialchars($check['message']); ?></div>
-                    </div>
+        <div class="progress">
+            <div class="progress-bar">
+                <?php for ($i = 1; $i <= $wizard->getTotalSteps(); $i++): ?>
+                <div class="step <?php echo $i < $current_step ? 'completed' : ($i === $current_step ? 'active' : ''); ?>">
+                    <?php echo $i < $current_step ? '✓' : $i; ?>
                 </div>
-                <?php endforeach; ?>
+                <?php endfor; ?>
+            </div>
+            <div class="step-labels">
+                <?php for ($i = 1; $i <= $wizard->getTotalSteps(); $i++): ?>
+                <div class="step-label <?php echo $i < $current_step ? 'completed' : ($i === $current_step ? 'active' : ''); ?>">
+                    <?php echo $wizard->getStepName($i); ?>
+                </div>
+                <?php endfor; ?>
             </div>
         </div>
 
-        <div class="installer-content">
-            <?php if ($already_installed): ?>
-                <div style="background: #fffbeb; border: 1px solid #f6e05e; color: #744210; padding: 20px; border-radius: 8px;">
-                    <h3>⚠️ System Already Installed</h3>
-                    <p>The contact form system appears to be already installed.</p>
-                    <br>
-                    <a href="install/" style="color: #1a365d; font-weight: 600;">→ Access Installation Wizard</a>
-                    <br><br>
-                    <p><strong>For testing:</strong> Use the "Comprehensive Reset" button below to clean everything and start fresh.</p>
+        <div class="content">
+            <!-- Step 1: Environment Check -->
+            <div class="step-content <?php echo $current_step === 1 ? 'active' : ''; ?>" id="step-1">
+                <div class="step-title">Environment Check</div>
+                <div class="step-description">
+                    Verifying your server environment and installation requirements.
                 </div>
-            <?php else: ?>
-                <div style="text-align: center;">
-                    <h2>Ready to Install</h2>
-                    <p>This installer deploys files directly to the web root with built-in comprehensive cleanup.</p>
 
-                    <?php
-                    $can_install = true;
-                    foreach ($system_checks as $check) {
-                        if ($check['status'] === 'ERROR') {
-                            $can_install = false;
-                            break;
-                        }
-                    }
-                    ?>
+                <div class="loading active" id="check-loading">
+                    <div class="spinner"></div>
+                    <span>Running checks...</span>
+                </div>
 
-                    <div class="progress-bar" id="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                    </div>
+                <div id="environment-results"></div>
 
-                    <button class="install-button" id="install-button" onclick="startInstallation()" <?php echo $can_install ? '' : 'disabled'; ?>>
-                        <span id="button-text">
-                            <?php echo $can_install ? '🚀 Install Contact Form System' : '❌ Cannot Install - Fix Errors Above'; ?>
-                        </span>
+                <div class="actions">
+                    <div></div>
+                    <button class="btn btn-primary" id="next-step-1" onclick="nextStep(1)" disabled>
+                        Continue →
                     </button>
-
-                    <div id="status-messages"></div>
-                </div>
-            <?php endif; ?>
-
-            <?php if (TESTING_MODE): ?>
-            <div class="testing-tools">
-                <h3>🧪 Enhanced Testing & Reset Tools</h3>
-                <p style="text-align: center; color: #6b7280; margin-bottom: 25px;">
-                    <strong>Professional cleanup options:</strong> Choose the right reset level for your needs. Self-update feature keeps installer current.
-                </p>
-
-                <div class="reset-options-grid">
-                    <!-- Self-Update - New Feature -->
-                    <div class="reset-card update">
-                        <div class="reset-title">
-                            🔄 Self-Update Installer
-                        </div>
-                        <div class="reset-description">
-                            Automatically updates this installer to the latest version from GitHub repository.
-                        </div>
-                        <div class="update-info" id="update-status">
-                            <div class="version-info">
-                                <span class="current-version">Current: v<?php echo INSTALLER_VERSION; ?></span>
-                                <span id="remote-version"></span>
-                            </div>
-                            <div id="update-available-notice"></div>
-                        </div>
-                        <div class="reset-details">
-                            <div class="reset-keeps">
-                                <strong>Features:</strong> Version checking, syntax validation, automatic backup, safe rollback
-                            </div>
-                            <div class="reset-removes">
-                                <strong>Safety:</strong> Creates backup before update, validates PHP syntax, rollback on failure
-                            </div>
-                        </div>
-                        <div class="update-history" id="update-history" style="display: none;">
-                            <strong>Update History:</strong><br>
-                            <div id="update-history-content"></div>
-                        </div>
-                        <button onclick="checkForUpdates()" class="reset-button update">🔍 Check for Updates</button>
-                        <button onclick="updateInstaller()" class="reset-button update" id="update-button" style="display: none;">⬆️ Update Installer</button>
-                        <button onclick="rollbackInstaller()" class="reset-button" style="background: #f59e0b; color: white; display: none;" id="rollback-button">↩️ Rollback</button>
-                        <button onclick="showUpdateHistory()" class="reset-button safe" style="margin-top: 5px;">📜 Update History</button>
-                    </div>
-
-                    <!-- Clear Logs - Safe Option -->
-                    <div class="reset-card safe">
-                        <div class="reset-title">
-                            📝 Clear Logs
-                        </div>
-                        <div class="reset-description">
-                            Safely removes installer logs and temporary files without affecting your installation.
-                        </div>
-                        <div class="reset-details">
-                            <div class="reset-removes">
-                                <strong>Removes:</strong> installer.log, temporary files, error logs
-                            </div>
-                            <div class="reset-keeps">
-                                <strong>Keeps:</strong> All installed files, configurations, and directories
-                            </div>
-                        </div>
-                        <p style="color: #059669; font-size: 13px; margin: 10px 0;">
-                            ✅ <strong>Recommended for:</strong> Regular maintenance and cleanup
-                        </p>
-                        <button onclick="clearLogs()" class="reset-button safe">📝 Clear Logs Only</button>
-                    </div>
-
-                    <!-- Comprehensive Reset - Standard Option -->
-                    <div class="reset-card">
-                        <div class="reset-title">
-                            🔄 Comprehensive Reset
-                        </div>
-                        <div class="reset-description">
-                            Removes all installation-related files while preserving critical system files and configurations.
-                        </div>
-                        <div class="reset-details">
-                            <div class="reset-removes">
-                                <strong>Removes:</strong> src/, config/, api/, scripts/, Contact-Form-Sales/, .next/, node_modules/, package.json, .env.local, logs
-                            </div>
-                            <div class="reset-keeps">
-                                <strong>Keeps:</strong> installer.php, .htaccess, README.md, .same/, .well-known/, .git/
-                            </div>
-                        </div>
-                        <p style="color: #d97706; font-size: 13px; margin: 10px 0;">
-                            ⚠️ <strong>Use when:</strong> Testing installations or starting fresh deployments
-                        </p>
-                        <button onclick="comprehensiveReset()" class="reset-button comprehensive">🔄 Comprehensive Reset</button>
-                    </div>
-
-                    <!-- Nuclear Reset - Danger Zone -->
-                    <div class="reset-card nuclear">
-                        <div class="reset-title">
-                            💥 Nuclear Reset
-                        </div>
-                        <div class="reset-description">
-                            <strong>IRREVERSIBLE:</strong> Removes everything except core system files. This is the most aggressive cleanup possible.
-                        </div>
-                        <div class="warning-text">
-                            ⚠️ <strong>WARNING:</strong> This operation cannot be undone! Only use if you need to completely start over.
-                        </div>
-                        <div class="reset-details">
-                            <div class="reset-removes">
-                                <strong>Removes:</strong> ALL files and directories except installer.php, .same/, and .well-known/
-                            </div>
-                            <div class="reset-keeps">
-                                <strong>Keeps:</strong> installer.php, .same/ folder, .well-known/ folder
-                            </div>
-                        </div>
-                        <p style="color: #dc2626; font-size: 13px; margin: 10px 0; font-weight: 600;">
-                            🚨 <strong>Only use if:</strong> Complete system wipe is required
-                        </p>
-                        <button onclick="nuclearReset()" class="reset-button nuclear">💥 Nuclear Reset</button>
-                    </div>
-                </div>
-
-                <div style="margin-top: 25px; padding: 15px; background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; border-radius: 8px; text-align: center;">
-                    <p style="color: #1e40af; margin: 0; font-size: 14px;">
-                        💡 <strong>Pro Tip:</strong> Use "Self-Update" to get latest features. Start with "Clear Logs" for routine cleanup. Use "Comprehensive Reset" for testing. Reserve "Nuclear Reset" for emergency situations only.
-                    </p>
                 </div>
             </div>
-            <?php endif; ?>
+
+            <!-- Step 2: Database Setup -->
+            <div class="step-content <?php echo $current_step === 2 ? 'active' : ''; ?>" id="step-2">
+                <div class="step-title">Database Setup</div>
+                <div class="step-description">
+                    Configure your MySQL database connection and install the required tables.
+                </div>
+
+                <form id="database-form">
+                    <div class="form-group">
+                        <label class="form-label" for="db_host">Database Host</label>
+                        <input type="text" class="form-input" id="db_host" name="db_host" value="localhost" required>
+                        <div class="form-help">Usually 'localhost' for shared hosting</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="db_name">Database Name</label>
+                        <input type="text" class="form-input" id="db_name" name="db_name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="db_username">Username</label>
+                        <input type="text" class="form-input" id="db_username" name="db_username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="db_password">Password</label>
+                        <input type="password" class="form-input" id="db_password" name="db_password">
+                    </div>
+
+                    <div class="checkbox">
+                        <input type="checkbox" id="create_database" name="create_database">
+                        <label for="create_database">Create database if it doesn't exist</label>
+                    </div>
+
+                    <button type="button" class="btn btn-outline" onclick="testDatabase()">
+                        Test Connection
+                    </button>
+                </form>
+
+                <div id="database-messages"></div>
+
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="previousStep(2)">
+                        ← Back
+                    </button>
+                    <button class="btn btn-primary" id="next-step-2" onclick="installDatabase()" disabled>
+                        Install Database →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Additional steps will be added here -->
+
         </div>
     </div>
 
     <script>
-    const steps = ['check', 'download', 'extract', 'deploy', 'cleanup'];
-    const stepNames = ['Checking Requirements', 'Downloading Package', 'Extracting Files', 'Deploying System', 'Completing Installation'];
+        const csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
 
-    async function startInstallation() {
-        const button = document.getElementById('install-button');
-        const progressBar = document.getElementById('progress-bar');
-        const progressFill = document.getElementById('progress-fill');
-
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner"></span> Installing...';
-        progressBar.style.display = 'block';
-
-        try {
-            for (let i = 0; i < steps.length; i++) {
-                showStatus(`${stepNames[i]}...`, 'info');
-                await runInstallationStep(steps[i]);
-                const progress = ((i + 1) / steps.length) * 100;
-                progressFill.style.width = progress + '%';
-                showStatus(`${stepNames[i]} completed!`, 'success');
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('step-1').classList.contains('active')) {
+                runEnvironmentChecks();
             }
-
-            showStatus('🎉 Installation completed successfully! Redirecting...', 'success');
-            setTimeout(() => { window.location.href = 'install/'; }, 3000);
-
-        } catch (error) {
-            showStatus('❌ Installation failed: ' + error.message, 'error');
-            button.disabled = false;
-            button.innerHTML = '🚀 Install Contact Form System';
-        }
-    }
-
-    async function runInstallationStep(step) {
-        const response = await fetch(`?action=install&step=${step}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'csrf_token=<?php echo $_SESSION['csrf_token']; ?>'
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        async function runEnvironmentChecks() {
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=check_environment&csrf_token=${csrfToken}`
+                });
 
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Unknown error occurred');
-        }
-        return result;
-    }
+                const result = await response.json();
 
-    function showStatus(message, type) {
-        const container = document.getElementById('status-messages');
-        const statusDiv = document.createElement('div');
-
-        let bgColor = type === 'success' ? '#f0fdf4' : type === 'error' ? '#fef2f2' : '#f0f9ff';
-        let borderColor = type === 'success' ? '#bbf7d0' : type === 'error' ? '#fecaca' : '#bae6fd';
-        let textColor = type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : '#2563eb';
-
-        statusDiv.style.cssText = `background: ${bgColor}; border: 1px solid ${borderColor}; color: ${textColor}; padding: 12px; border-radius: 8px; margin: 8px 0; text-align: center; font-weight: 500;`;
-        statusDiv.innerHTML = message;
-        container.appendChild(statusDiv);
-
-        if (container.children.length > 5) {
-            container.removeChild(container.firstChild);
-        }
-    }
-
-    <?php if (TESTING_MODE): ?>
-
-    // Self-Update Functions
-    async function checkForUpdates() {
-        showStatus("🔍 Checking for installer updates...", "info");
-        try {
-            const response = await fetch("?action=check_updates");
-            const result = await response.json();
-
-            if (result.success) {
-                const remoteVersionEl = document.getElementById('remote-version');
-                const updateNoticeEl = document.getElementById('update-available-notice');
-                const updateButton = document.getElementById('update-button');
-
-                remoteVersionEl.innerHTML = `<span class="new-version">Remote: v${result.remote_version}</span>`;
-
-                if (result.update_available) {
-                    updateNoticeEl.innerHTML = `<div class="update-available">🎉 Update available! v${result.current_version} → v${result.remote_version}</div>`;
-                    updateButton.style.display = 'block';
-                    showStatus(`✅ Update available: v${result.current_version} → v${result.remote_version}`, "success");
-                } else {
-                    updateNoticeEl.innerHTML = `<div class="update-info">✅ You have the latest version (v${result.current_version})</div>`;
-                    updateButton.style.display = 'none';
-                    showStatus(`✅ Already running latest version: v${result.current_version}`, "success");
-                }
-
-                // Show rollback button if backup exists
-                checkBackupExists();
-            } else {
-                showStatus("❌ Update check failed: " + result.error, "error");
-            }
-        } catch (error) {
-            showStatus("❌ Update check error: " + error.message, "error");
-        }
-    }
-
-    async function updateInstaller() {
-        if (!confirm("🔄 Update installer to the latest version? Current version will be backed up automatically.")) return;
-
-        showStatus("⬆️ Downloading and installing update...", "info");
-        try {
-            const response = await fetch("?action=update_installer");
-            const result = await response.json();
-
-            if (result.success) {
-                if (result.updated) {
-                    showStatus(`✅ ${result.message}`, "success");
-                    showStatus(`💾 Backup created: ${result.backup_file}`, "info");
-                    showStatus("🔄 Page will reload in 3 seconds to use new version...", "info");
-                    setTimeout(() => location.reload(), 3000);
-                } else {
-                    showStatus(`ℹ️ ${result.message}`, "info");
-                }
-            } else {
-                showStatus("❌ Update failed: " + result.error, "error");
-            }
-        } catch (error) {
-            showStatus("❌ Update error: " + error.message, "error");
-        }
-    }
-
-    async function rollbackInstaller() {
-        if (!confirm("↩️ Rollback to the previous installer version? This will replace the current version with the backup.")) return;
-
-        showStatus("↩️ Rolling back installer...", "info");
-        try {
-            const response = await fetch("?action=rollback_installer");
-            const result = await response.json();
-
-            if (result.success) {
-                showStatus(`✅ ${result.message}`, "success");
-                showStatus(`💾 Emergency backup created: ${result.emergency_backup}`, "info");
-                showStatus("🔄 Page will reload in 3 seconds...", "info");
-                setTimeout(() => location.reload(), 3000);
-            } else {
-                showStatus("❌ Rollback failed: " + result.error, "error");
-            }
-        } catch (error) {
-            showStatus("❌ Rollback error: " + error.message, "error");
-        }
-    }
-
-    async function showUpdateHistory() {
-        const historyEl = document.getElementById('update-history');
-        const contentEl = document.getElementById('update-history-content');
-
-        try {
-            const response = await fetch("?action=update_history");
-            const result = await response.json();
-
-            if (result.success && result.history.length > 0) {
-                contentEl.innerHTML = result.history.join('<br>');
-                historyEl.style.display = 'block';
-                showStatus(`📜 Showing ${result.history.length} recent update entries`, "info");
-            } else {
-                showStatus("📜 No update history found", "info");
-                historyEl.style.display = 'none';
-            }
-        } catch (error) {
-            showStatus("❌ Failed to load update history: " + error.message, "error");
-        }
-    }
-
-    function checkBackupExists() {
-        // This would require another endpoint, but for now we'll just show the rollback button
-        // if the user has performed an update
-        const rollbackButton = document.getElementById('rollback-button');
-        rollbackButton.style.display = 'block';
-    }
-
-    // Automatically check for updates on page load
-    window.addEventListener('load', function() {
-        // Small delay to let the page settle
-        setTimeout(checkForUpdates, 1000);
-    });
-
-    async function comprehensiveReset() {
-        if (!confirm("🔄 This will remove ALL installation files, configs, logs, and artifacts. Continue?")) return;
-        showStatus("🧹 Running comprehensive reset...", "info");
-        try {
-            const response = await fetch("?action=reset");
-            const result = await response.json();
-            if (result.success) {
-                showStatus(`✅ ${result.message}`, "success");
-                if (result.cleanup_log) {
-                    result.cleanup_log.slice(0, 5).forEach(log => {
-                        showStatus(`• ${log}`, "info");
-                    });
-                }
-                setTimeout(() => location.reload(), 3000);
-            }
-        } catch (error) {
-            showStatus("❌ Reset error: " + error.message, "error");
-        }
-    }
-
-    async function nuclearReset() {
-        if (!confirm("💥 NUCLEAR RESET: This will remove EVERYTHING except installer.php, .same/, and .well-known/. This is the most aggressive cleanup possible. Are you absolutely sure?")) return;
-        showStatus("💥 Running nuclear reset...", "info");
-        try {
-            const response = await fetch("?action=nuclear_reset");
-            const result = await response.json();
-            if (result.success) {
-                showStatus(`✅ ${result.message}`, "success");
-                if (result.cleanup_log) {
-                    result.cleanup_log.slice(0, 5).forEach(log => {
-                        showStatus(`• ${log}`, "info");
-                    });
-                }
-                setTimeout(() => location.reload(), 4000);
-            }
-        } catch (error) {
-            showStatus("❌ Nuclear reset error: " + error.message, "error");
-        }
-    }
-
-    function clearLogs() {
-        if (!confirm("📝 Clear all installer logs?")) return;
-        fetch("?action=clear_logs")
-            .then(response => response.json())
-            .then(result => {
                 if (result.success) {
-                    showStatus("✅ " + result.message, "success");
+                    displayEnvironmentResults(result);
+                    document.getElementById('next-step-1').disabled = !result.can_proceed;
+                } else {
+                    showMessage('Error running environment checks', 'error');
                 }
-            });
-    }
-    <?php endif; ?>
+            } catch (error) {
+                showMessage('Failed to run environment checks: ' + error.message, 'error');
+            } finally {
+                document.getElementById('check-loading').classList.remove('active');
+            }
+        }
+
+        function displayEnvironmentResults(result) {
+            let html = '<div class="checks">';
+
+            // Web root checks
+            for (const [key, check] of Object.entries(result.web_root)) {
+                const status = check.status ? 'success' : (check.critical ? 'error' : 'warning');
+                const icon = check.status ? '✅' : (check.critical ? '❌' : '⚠️');
+
+                html += `
+                    <div class="check ${status}">
+                        <div class="check-icon">${icon}</div>
+                        <div class="check-content">
+                            <h4>${check.name}</h4>
+                            <p>${check.message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // PHP check
+            const phpCheck = result.environment.php;
+            const phpStatus = phpCheck.status ? (phpCheck.level === 'excellent' ? 'success' : 'warning') : 'error';
+            const phpIcon = phpCheck.status ? '✅' : '❌';
+
+            html += `
+                <div class="check ${phpStatus}">
+                    <div class="check-icon">${phpIcon}</div>
+                    <div class="check-content">
+                        <h4>${phpCheck.name}</h4>
+                        <p>${phpCheck.message}</p>
+                    </div>
+                </div>
+            `;
+
+            // Extension checks
+            for (const [ext, check] of Object.entries(result.environment.extensions)) {
+                const status = check.status ? 'success' : (check.critical ? 'error' : 'warning');
+                const icon = check.status ? '✅' : (check.critical ? '❌' : '⚠️');
+
+                html += `
+                    <div class="check ${status}">
+                        <div class="check-icon">${icon}</div>
+                        <div class="check-content">
+                            <h4>${check.name}</h4>
+                            <p>${check.message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+
+            if (!result.can_proceed) {
+                html += '<div class="message error">❌ Please resolve the critical errors above before continuing.</div>';
+            } else {
+                html += '<div class="message success">✅ Environment check passed! Ready to proceed.</div>';
+            }
+
+            document.getElementById('environment-results').innerHTML = html;
+        }
+
+        async function testDatabase() {
+            const form = document.getElementById('database-form');
+            const formData = new FormData(form);
+            formData.append('action', 'test_database');
+            formData.append('csrf_token', csrfToken);
+
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ ' + result.message, 'success', 'database-messages');
+                    document.getElementById('next-step-2').disabled = false;
+                } else {
+                    showMessage('❌ ' + result.message, 'error', 'database-messages');
+                    document.getElementById('next-step-2').disabled = true;
+                }
+            } catch (error) {
+                showMessage('❌ Connection test failed: ' + error.message, 'error', 'database-messages');
+            }
+        }
+
+        async function installDatabase() {
+            const form = document.getElementById('database-form');
+            const formData = new FormData(form);
+            formData.append('action', 'install_database');
+            formData.append('csrf_token', csrfToken);
+
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ ' + result.message, 'success', 'database-messages');
+                    setTimeout(() => nextStep(2), 1500);
+                } else {
+                    showMessage('❌ ' + result.message, 'error', 'database-messages');
+                }
+            } catch (error) {
+                showMessage('❌ Database installation failed: ' + error.message, 'error', 'database-messages');
+            }
+        }
+
+        function nextStep(currentStep) {
+            window.location.href = `?step=${currentStep + 1}`;
+        }
+
+        function previousStep(currentStep) {
+            window.location.href = `?step=${currentStep - 1}`;
+        }
+
+        function showMessage(message, type, containerId = 'environment-results') {
+            const container = document.getElementById(containerId);
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = message;
+
+            // Remove existing messages
+            const existingMessages = container.querySelectorAll('.message');
+            existingMessages.forEach(msg => msg.remove());
+
+            container.appendChild(messageDiv);
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
     </script>
 </body>
 </html>
