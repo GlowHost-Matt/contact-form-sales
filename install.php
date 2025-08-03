@@ -1,6 +1,6 @@
 <?php
 /**
- * GlowHost Contact Form – Single-File Installer v2 (ASCII-safe)
+ * GlowHost Contact Form – Single-File Installer v2.1 (ASCII-safe)
  * Upload only this file, browse to /install.php, follow the wizard.
  */
 
@@ -15,7 +15,7 @@ function fail($message) {
     http_response_code(500);
     header('Content-Type: text/html; charset=UTF-8');
     echo '<!DOCTYPE html><html lang="en"><head><title>Installer Error</title><style>body{font-family:system-ui,sans-serif;color:#333;background:#fdfdfe;padding:2em;}div{max-width:600px;margin:0 auto;padding:2em;background:white;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.05);}h2{color:#d00;}</style></head><body><div>';
-    echo '<h2>Installer Error</h2><p>' . htmlspecialchars($message) . '</p>';
+    echo '<h2>Installer Error</h2><p>' . $message . '</p>'; // Allow HTML in message
     echo '</div></body></html>';
     // Attempt to clean up failed download
     if (file_exists(TMP_ZIP)) @unlink(TMP_ZIP);
@@ -49,7 +49,7 @@ if (!ini_get('allow_url_fopen') && !function_exists('curl_init'))
 
 if ($errors) {
     $error_html = '<h2>Prerequisites Not Met</h2><ul><li>' . implode('</li><li>', $errors) . '</li></ul><p>Please fix the items above and reload this page.</p>';
-    fail($error_html); // This uses the styled fail function.
+    fail($error_html);
 }
 
 // --- Step 2: If wizard already exists, load it ---
@@ -63,33 +63,43 @@ if (file_exists($wizard_path)) {
 function download_zip($url, $dest) {
     if (function_exists('curl_init')) {
         $fp = fopen($dest, 'w+');
+        if ($fp === false) {
+            fail('Failed to open local file for writing: ' . htmlspecialchars($dest));
+        }
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_FILE           => $fp,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 90,
-            CURLOPT_USERAGENT      => 'GlowHost-Installer/2.0',
+            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_USERAGENT      => 'GlowHost-Installer/2.1',
             CURLOPT_FAILONERROR    => true,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
         ]);
         $result = curl_exec($ch);
-        $error = curl_error($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
         curl_close($ch);
         fclose($fp);
         if ($result === false) {
-            fail("cURL Error: Failed to download ZIP file. " . htmlspecialchars($error));
+            fail("cURL Error (HTTP code: $http_code): " . htmlspecialchars($curl_error));
         }
         return true;
     }
     if (ini_get('allow_url_fopen')) {
-        $context = stream_context_create(['http' => ['user_agent' => 'GlowHost-Installer/2.0', 'timeout' => 90]]);
+        $context = stream_context_create(['http' => [
+            'user_agent' => 'GlowHost-Installer/2.1',
+            'timeout' => 120,
+            'follow_location' => 1,
+            'max_redirects' => 20
+        ]]);
         $data = @file_get_contents($url, false, $context);
         if ($data === false) {
-            fail('file_get_contents Error: Failed to download ZIP file. Check server firewall or allow_url_fopen settings.');
+            $last_error = error_get_last();
+            fail('file_get_contents Error: Failed to download ZIP file. Last error: ' . htmlspecialchars($last_error['message'] ?? 'Unknown error'));
         }
         if (file_put_contents($dest, $data) === false) {
-            fail('Failed to write downloaded data to local file: ' . TMP_ZIP);
+            fail('Failed to write downloaded data to local file: ' . htmlspecialchars(TMP_ZIP));
         }
         return true;
     }
@@ -100,7 +110,7 @@ download_zip(GH_ZIP_URL, TMP_ZIP);
 
 // Verify download
 if (!file_exists(TMP_ZIP) || filesize(TMP_ZIP) < 100000) { // Expecting ~600KB+
-    fail('Downloaded file is missing or too small, suggesting a failed download.');
+    fail('Downloaded file is missing or too small (size: ' . (file_exists(TMP_ZIP) ? filesize(TMP_ZIP) : 0) . ' bytes), suggesting a failed download.');
 }
 
 // --- Step 4: Extract the /install directory ---
@@ -147,7 +157,7 @@ if (empty($repo_dir_name)) {
 $potential_install_path = $tmp_extract_dir . DIRECTORY_SEPARATOR . $repo_dir_name . DIRECTORY_SEPARATOR . INSTALL_DIR;
 
 if (is_dir($potential_install_path) && file_exists($potential_install_path . DIRECTORY_SEPARATOR . 'index.php')) {
-    $install_dir_source = $potential_install_path;
+    $install_dir__source = $potential_install_path;
 }
 
 if ($install_dir_source === null) {
