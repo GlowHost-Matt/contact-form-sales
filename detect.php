@@ -56,7 +56,7 @@ deployPhpInfo();
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
         .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { background: #2563eb; color: white; padding: 20px; margin: -30px -30px 20px -30px; border-radius: 8px 8px 0 0; text-align: center; }
+        .header { background: #2563eb; color: white; padding: 20px; margin: -30px -30px 20px -30px; border-radius: 8px 8px 0 0; text-align: center; position: relative; }
         .version-box { background: #f0f9ff; border: 2px solid #2563eb; padding: 20px; margin: 20px 0; border-radius: 6px; }
         .error-box { background: #fef2f2; border: 2px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 6px; }
         .success-box { background: #f0fdf4; border: 2px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 6px; }
@@ -64,12 +64,19 @@ deployPhpInfo();
         .btn { display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
         .btn-success { background: #10b981; }
         .btn-warning { background: #f59e0b; }
+        .back-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.2); color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
         ol { margin: 10px 0 0 20px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
+            <?php if ($step === 'check'): ?>
+                <a href="?step=deploy" class="back-btn">← Back</a>
+            <?php elseif ($step === 'install'): ?>
+                <a href="?step=check" class="back-btn">← Back</a>
+            <?php endif; ?>
             <h1>GlowHost Contact Form System</h1>
             <p>PHP Environment Check</p>
         </div>
