@@ -71,13 +71,20 @@ define('CONFIG_FILE', 'config.php');
 define('ADMIN_DIR', 'admin');
 
 // Security and session management (safe to use modern functions now)
-if (session_status() === PHP_SESSION_NONE) {
+if (function_exists('session_status') && session_status() === PHP_SESSION_NONE) {
+    session_start();
+} else if (!isset($_SESSION)) {
     session_start();
 }
 
 // CSRF protection (using modern PHP functions - safe after version check)
 if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    if (function_exists('random_bytes')) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    } else {
+        // Fallback for older PHP versions (shouldn't reach here due to version check)
+        $_SESSION['csrf_token'] = md5(uniqid(rand(), true));
+    }
 }
 
 // Determine current step
