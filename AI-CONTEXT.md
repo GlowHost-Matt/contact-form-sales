@@ -10,6 +10,12 @@
 
 **NUCLEAR RULE: If unsure about q: compliance, ASK before acting**
 
+### MANDATORY URL TESTING PROTOCOL
+- BEFORE directing user to any URL, ALWAYS test it first with web_scrape
+- NEVER assume GitHub file = working server URL
+- If URL returns 404/500, identify the real issue and provide working solution
+- Include URL verification as standard QA step in all recommendations
+
 ---
 
 **Project**: GlowHost Enterprise Contact Form System
