@@ -54,15 +54,17 @@ deployPhpInfo();
 <head>
     <title>PHP Version Check - GlowHost Contact Form</title>
     <style>
-        /* GlowHost Official Design System */
+        /* Official GlowHost Brand Colors */
         :root {
-            --primary-blue-600: #2563eb;
-            --primary-blue-700: #1d4ed8;
-            --primary-blue-50: #eff6ff;
-            --primary-blue-100: #dbeafe;
-            --primary-blue-200: #bfdbfe;
-            --cyan-200: #a5f3fc;
-            --cyan-100: #cffafe;
+            --glowhost-navy: #061c63;
+            --glowhost-blue: #1e3b97;
+            --glowhost-bright: #4164dd;
+            --glowhost-light: #7b95f1;
+            --glowhost-navy-light: #1a2b5c;
+            --glowhost-blue-light: #2d4ba3;
+            --glowhost-bg-light: #f0f4ff;
+            --glowhost-bg-subtle: #e8efff;
+            --cyan-accent: #52cfe5;
             --gray-50: #f9fafb;
             --gray-100: #f3f4f6;
             --gray-200: #e5e7eb;
@@ -93,13 +95,48 @@ deployPhpInfo();
             line-height: 1.6;
         }
 
-        /* Simplified Header */
-        .simple-header {
-            background: var(--primary-blue-600);
+        /* Official GlowHost Header */
+        .glowhost-header {
+            background: var(--glowhost-blue);
             color: white;
             padding: 1rem 0;
-            text-align: center;
             position: relative;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .glowhost-logo {
+            height: 32px;
+        }
+
+        .support-info {
+            text-align: right;
+            font-size: 0.875rem;
+        }
+
+        .support-hours {
+            color: var(--cyan-accent);
+            margin-bottom: 0.25rem;
+        }
+
+        .support-phone {
+            font-weight: 600;
+        }
+
+        .support-phone a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .support-phone a:hover {
+            color: var(--cyan-accent);
         }
 
         .simple-header h1 {
@@ -118,7 +155,7 @@ deployPhpInfo();
         .detection-card {
             background: white;
             border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             overflow: hidden;
         }
 
@@ -144,8 +181,8 @@ deployPhpInfo();
         }
 
         .version-box {
-            background: var(--primary-blue-50);
-            border-color: var(--primary-blue-200);
+            background: var(--glowhost-bg-light);
+            border-color: var(--glowhost-light);
             color: var(--gray-800);
         }
 
@@ -215,12 +252,12 @@ deployPhpInfo();
         }
 
         .btn-primary {
-            background: var(--primary-blue-600);
+            background: var(--glowhost-bright);
             color: white;
         }
 
         .btn-primary:hover {
-            background: var(--primary-blue-700);
+            background: var(--glowhost-blue);
         }
 
         .btn-success {
@@ -281,7 +318,7 @@ deployPhpInfo();
             height: 20px;
             border: 2px solid var(--gray-200);
             border-radius: 50%;
-            border-top-color: var(--primary-blue-600);
+            border-top-color: var(--glowhost-bright);
             animation: spin 1s ease-in-out infinite;
             margin-right: 0.5rem;
         }
@@ -292,13 +329,13 @@ deployPhpInfo();
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            .glowhost-container {
+            .header-container {
                 flex-direction: column;
                 text-align: center;
                 gap: 1rem;
             }
 
-            .glowhost-support {
+            .support-info {
                 text-align: center;
             }
 
@@ -321,18 +358,36 @@ deployPhpInfo();
     </style>
 </head>
 <body>
-    <!-- Simplified Header -->
-    <header class="simple-header">
+    <!-- Official GlowHost Header -->
+    <header class="glowhost-header">
         <?php if ($step === 'check'): ?>
             <a href="?step=deploy" class="back-btn">← Back</a>
         <?php elseif ($step === 'install'): ?>
             <a href="?step=check" class="back-btn">← Back</a>
         <?php endif; ?>
-        <h1>GlowHost Contact Form - PHP Version Check</h1>
+        <div class="header-container">
+            <img src="https://glowhost.com/wp-content/uploads/logo-sans-tagline.png"
+                 alt="GlowHost" class="glowhost-logo" />
+            <div class="support-info">
+                <div class="support-hours">24 / 7 / 365 Support</div>
+                <div class="support-phone">
+                    Toll Free Sales <a href="tel:+18882934678">1 (888) 293-HOST</a>
+                </div>
+            </div>
+        </div>
     </header>
 
     <!-- Main Content -->
     <div class="main-container">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h1 style="color: var(--glowhost-navy); font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">
+                Contact Form System - Environment Check
+            </h1>
+            <p style="color: var(--gray-600);">
+                Verifying your server compatibility for the GlowHost Contact Form installation
+            </p>
+        </div>
+
         <div class="detection-card">
             <div class="card-header">
                 <?php if ($step === 'check'): ?>
