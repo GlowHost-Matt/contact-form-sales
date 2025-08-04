@@ -127,8 +127,8 @@ deployPhpInfo();
                     <div class="success-box">
                         <h3>✅ Excellent PHP Version!</h3>
                         <p><strong>Status:</strong> Perfect for modern web applications</p>
-                        <p><strong>Compatibility:</strong> Full installer support</p>
-                        <p>Your PHP version is current and secure. Proceeding with installation is recommended.</p>
+                        <p><strong>Industry Context:</strong> PHP 8.1+ is the current standard for modern development with active security support and performance improvements.</p>
+                        <p><strong>Compatibility:</strong> Full installer support with optimal performance</p>
                     </div>
 
                     <div style="text-align: center;">
@@ -140,8 +140,9 @@ deployPhpInfo();
                     <div class="warning-box">
                         <h3>⚠️ PHP Version Compatible</h3>
                         <p><strong>Status:</strong> Will work</p>
-                        <p><strong>Recommendation:</strong> Consider upgrading to PHP 8.4 for optimal performance</p>
-                        <p>Your current PHP version is functional. Upgrading provides enhanced security and performance.</p>
+                        <p><strong>Recommendation:</strong> Upgrade to PHP 8.4 strongly recommended</p>
+                        <p><strong>Industry Context:</strong> PHP 7.4 reached end-of-life in November 2022 and no longer receives security updates. Modern development standards require PHP 8.1+ for new projects.</p>
+                        <p>While functional, this version poses security risks in production environments.</p>
                     </div>
 
                     <div class="version-box">
@@ -155,17 +156,18 @@ deployPhpInfo();
                     </div>
 
                     <div style="text-align: center;">
-                        <a href="?step=install" class="btn btn-warning">⚡ Proceed Anyway</a>
-                        <a href="?step=check" class="btn">🔄 Check Again After Upgrade</a>
+                        <a href="?step=check" class="btn btn-success">🔄 Check Again After Upgrade</a>
+                        <a href="?step=install" class="btn btn-warning">⚠️ Proceed at Own Risk</a>
                     </div>
 
                 <?php else: ?>
                     <!-- PHP < 7.4 Too old -->
                     <div class="error-box">
-                        <h3>🚨 PHP Version Incompatible</h3>
+                        <h3>🚨 PHP Version Incompatible - Installation Blocked</h3>
                         <p><strong>Current:</strong> <?php echo htmlspecialchars($detected_version); ?></p>
                         <p><strong>Required:</strong> 7.4+ (8.4 recommended)</p>
-                        <p>This installer requires a newer PHP version to function properly.</p>
+                        <p><strong>Industry Context:</strong> PHP 5.x reached end-of-life in 2018 and contains critical security vulnerabilities. No modern web applications support this version.</p>
+                        <p>Installation is blocked to protect your server security.</p>
                     </div>
 
                     <div class="warning-box">
