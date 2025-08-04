@@ -116,6 +116,70 @@
             padding-top: 24px;
             border-top: 1px solid #e5e7eb;
         }
+
+        /* Large Interactive Checkboxes */
+        .confirmation-checkboxes {
+            margin: 20px 0;
+        }
+
+        .checkbox-large {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 16px 0;
+            padding: 16px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .checkbox-large:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .checkbox-large input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkmark {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #94a3b8;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .checkbox-large input[type="checkbox"]:checked + .checkmark {
+            background: #10b981;
+            border-color: #10b981;
+        }
+
+        .checkbox-large input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .checkbox-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #374151;
+            flex: 1;
+        }
+
+        .checkbox-large input[type="checkbox"]:checked ~ .checkbox-text {
+            color: #065f46;
+        }
     </style>
 </head>
 <body>
@@ -145,7 +209,7 @@
             </div>
 
             <div class="checklist">
-                <h4>✅ System Requirements Checklist</h4>
+                <h4>📋 System Requirements Checklist</h4>
                 <ul>
                     <li><strong>PHP Version:</strong> 7.4.0 or higher (8.1+ recommended)</li>
                     <li><strong>Required Extensions:</strong> ZipArchive, cURL or allow_url_fopen, PDO, MySQLi</li>
@@ -156,25 +220,32 @@
             </div>
 
             <div class="step">
-                <h3>Step 2: Verify Compatibility</h3>
-                <p>Ensure your server meets these minimum requirements:</p>
+                <h3>Step 2: Confirm Your Readiness</h3>
+                <p><strong>⚠️ REQUIRED:</strong> You must check all 3 boxes below to proceed with installation.</p>
 
-                <div style="margin: 15px 0;">
-                    <label style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
+                <div class="confirmation-checkboxes">
+                    <label class="checkbox-large">
                         <input type="checkbox" id="php-version">
-                        <span>✅ My PHP version is 7.4.0 or higher</span>
+                        <span class="checkmark"></span>
+                        <span class="checkbox-text">I have confirmed my PHP version is 7.4.0 or higher</span>
                     </label>
 
-                    <label style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
+                    <label class="checkbox-large">
                         <input type="checkbox" id="hosting-access">
-                        <span>✅ I have web hosting with MySQL database access</span>
+                        <span class="checkmark"></span>
+                        <span class="checkbox-text">I have web hosting with MySQL database access</span>
                     </label>
 
-                    <label style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
+                    <label class="checkbox-large">
                         <input type="checkbox" id="admin-access">
-                        <span>✅ I have administrative access to this web directory</span>
+                        <span class="checkmark"></span>
+                        <span class="checkbox-text">I have administrative access to this web directory</span>
                     </label>
                 </div>
+
+                <p style="margin-top: 15px; font-style: italic; color: #6b7280;">
+                    💡 <strong>Note:</strong> Click each checkbox above to confirm you meet the requirements.
+                </p>
             </div>
 
             <div class="actions">
