@@ -54,43 +54,362 @@ deployPhpInfo();
 <head>
     <title>PHP Version Check - GlowHost Contact Form</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
-        .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { background: #2563eb; color: white; padding: 20px; margin: -30px -30px 20px -30px; border-radius: 8px 8px 0 0; text-align: center; position: relative; }
-        .version-box { background: #f0f9ff; border: 2px solid #2563eb; padding: 20px; margin: 20px 0; border-radius: 6px; }
-        .error-box { background: #fef2f2; border: 2px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 6px; }
-        .success-box { background: #f0fdf4; border: 2px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 6px; }
-        .warning-box { background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 6px; }
-        .btn { display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
-        .btn-success { background: #10b981; }
-        .btn-warning { background: #f59e0b; }
-        .back-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.2); color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; }
-        .back-btn:hover { background: rgba(255,255,255,0.3); }
-        ol { margin: 10px 0 0 20px; }
+        /* GlowHost Official Design System */
+        :root {
+            --primary-blue-600: #2563eb;
+            --primary-blue-700: #1d4ed8;
+            --primary-blue-50: #eff6ff;
+            --primary-blue-100: #dbeafe;
+            --primary-blue-200: #bfdbfe;
+            --cyan-200: #a5f3fc;
+            --cyan-100: #cffafe;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --red-100: #fee2e2;
+            --red-600: #dc2626;
+            --green-50: #f0fdf4;
+            --green-600: #16a34a;
+            --green-700: #15803d;
+            --yellow-50: #fffbeb;
+            --yellow-600: #d97706;
+            --yellow-700: #b45309;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Official GlowHost Header */
+        .glowhost-header {
+            background: var(--primary-blue-600);
+            color: white;
+            position: relative;
+        }
+
+        .glowhost-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+
+        .glowhost-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .glowhost-support {
+            text-align: right;
+            font-size: 0.875rem;
+        }
+
+        .support-hours {
+            color: var(--cyan-200);
+            margin-bottom: 0.25rem;
+        }
+
+        .support-phone {
+            font-weight: 600;
+        }
+
+        .support-phone a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .support-phone a:hover {
+            color: var(--cyan-200);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .detection-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: var(--primary-blue-600);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .card-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-header p {
+            color: var(--cyan-200);
+            font-size: 0.875rem;
+        }
+
+        .card-content {
+            padding: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Status Boxes */
+        .status-box {
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border: 1px solid;
+        }
+
+        .version-box {
+            background: var(--primary-blue-50);
+            border-color: var(--primary-blue-200);
+            color: var(--gray-800);
+        }
+
+        .success-box {
+            background: var(--green-50);
+            border-color: var(--green-600);
+            color: var(--gray-800);
+        }
+
+        .warning-box {
+            background: var(--yellow-50);
+            border-color: var(--yellow-600);
+            color: var(--gray-800);
+        }
+
+        .error-box {
+            background: var(--red-100);
+            border-color: var(--red-600);
+            color: var(--gray-800);
+        }
+
+        .status-box h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .status-box h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .status-box p {
+            margin-bottom: 0.5rem;
+        }
+
+        .status-box strong {
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 0.5rem 0.25rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-blue-600);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-blue-700);
+        }
+
+        .btn-success {
+            background: var(--green-600);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: var(--green-700);
+        }
+
+        .btn-warning {
+            background: var(--yellow-600);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: var(--yellow-700);
+        }
+
+        .btn-actions {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        /* Back Button */
+        .back-btn {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--gray-100);
+            border-top: 1px solid var(--gray-200);
+            margin-top: 3rem;
+            padding: 1.5rem 0;
+            text-align: center;
+        }
+
+        .footer p {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+        }
+
+        /* Lists */
+        ol {
+            margin: 0.75rem 0 0 1.25rem;
+            color: var(--gray-700);
+        }
+
+        /* Loading Animation */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-200);
+            border-radius: 50%;
+            border-top-color: var(--primary-blue-600);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .glowhost-container {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .glowhost-support {
+                text-align: center;
+            }
+
+            .main-container {
+                margin: 1rem auto;
+                padding: 0 0.5rem;
+            }
+
+            .card-content {
+                padding: 1.5rem;
+            }
+
+            .back-btn {
+                position: static;
+                display: block;
+                margin-bottom: 1rem;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <?php if ($step === 'check'): ?>
-                <a href="?step=deploy" class="back-btn">← Back</a>
-            <?php elseif ($step === 'install'): ?>
-                <a href="?step=check" class="back-btn">← Back</a>
-            <?php endif; ?>
-            <h1>GlowHost Contact Form System</h1>
-            <p>PHP Environment Check</p>
-        </div>
-
-        <?php if ($step === 'deploy'): ?>
-            <h2>🔍 Checking Your PHP Version...</h2>
-            <div class="version-box">
-                <p>Deploying diagnostic files and checking compatibility...</p>
+    <!-- Official GlowHost Header -->
+    <header class="glowhost-header">
+        <div class="glowhost-container">
+            <div class="glowhost-logo">🌟 GlowHost</div>
+            <div class="glowhost-support">
+                <div class="support-hours">24 / 7 / 365 Support</div>
+                <div class="support-phone">
+                    Toll Free Sales <a href="tel:+18882934678">1 (888) 293-HOST</a>
+                </div>
             </div>
-            <script>
-            setTimeout(function() {
-                window.location.href = '?step=check';
-            }, 2000);
-            </script>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <div class="detection-card">
+            <div class="card-header">
+                <?php if ($step === 'check'): ?>
+                    <a href="?step=deploy" class="back-btn">← Back</a>
+                <?php elseif ($step === 'install'): ?>
+                    <a href="?step=check" class="back-btn">← Back</a>
+                <?php endif; ?>
+                <h1>Contact Form System</h1>
+                <p>PHP Environment Detection</p>
+            </div>
+
+            <div class="card-content">
+
+                <?php if ($step === 'deploy'): ?>
+                    <h2 class="section-title">🔍 Analyzing Your PHP Environment</h2>
+                    <div class="version-box">
+                        <div style="display: flex; align-items: center; justify-content: center;">
+                            <div class="loading-spinner"></div>
+                            <span>Deploying diagnostic tools and analyzing server compatibility...</span>
+                        </div>
+                    </div>
+                    <script>
+                    setTimeout(function() {
+                        window.location.href = '?step=check';
+                    }, 2000);
+                    </script>
 
         <?php elseif ($step === 'check'): ?>
             <?php
@@ -116,7 +435,7 @@ deployPhpInfo();
                 </div>
 
             <?php else: ?>
-                <h2>📊 PHP Version Analysis</h2>
+                <h2 class="section-title">📊 PHP Version Analysis</h2>
 
                 <div class="version-box">
                     <h3>Detected: PHP <?php echo htmlspecialchars($detected_version); ?></h3>
@@ -131,7 +450,7 @@ deployPhpInfo();
                         <p><strong>Compatibility:</strong> Full installer support with optimal performance</p>
                     </div>
 
-                    <div style="text-align: center;">
+                    <div class="btn-actions">
                         <a href="?step=install" class="btn btn-success">🚀 Download & Run Installer</a>
                     </div>
 
@@ -155,7 +474,7 @@ deployPhpInfo();
                         </ol>
                     </div>
 
-                    <div style="text-align: center;">
+                    <div class="btn-actions">
                         <a href="?step=check" class="btn btn-success">🔄 Check Again After Upgrade</a>
                         <a href="?step=install" class="btn btn-warning">⚠️ Proceed at Own Risk</a>
                     </div>
@@ -176,15 +495,15 @@ deployPhpInfo();
                         <p>We can adopt modules, extensions or whatever the new "BS Bingo" is called later, but you need a modern PHP working.</p>
                     </div>
 
-                    <div style="text-align: center;">
-                        <a href="?step=check" class="btn">🔄 Check Again After Upgrade</a>
-                        <a href="phpinfo.php" class="btn" target="_blank">📋 View Full PHP Info</a>
+                    <div class="btn-actions">
+                        <a href="?step=check" class="btn btn-primary">🔄 Check Again After Upgrade</a>
+                        <a href="phpinfo.php" class="btn btn-primary" target="_blank">📋 View Full PHP Info</a>
                     </div>
                 <?php endif; ?>
             <?php endif; ?>
 
         <?php elseif ($step === 'install'): ?>
-            <h2>📥 Downloading Modern Installer</h2>
+                <h2 class="section-title">📥 Installer Download</h2>
 
             <div class="success-box">
                 <h3>✅ PHP Version Compatible!</h3>
@@ -207,10 +526,19 @@ deployPhpInfo();
                 </ul>
             </div>
 
-            <div style="text-align: center;">
-                <a href="install.php" class="btn btn-success">🏁 Start Installation</a>
+                <div class="btn-actions">
+                    <a href="install.php" class="btn btn-success">🏁 Start Installation</a>
+                </div>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
+        </div>
     </div>
+
+    <!-- Professional Footer -->
+    <footer class="footer">
+        <div class="glowhost-container">
+            <p>Contact Form System v5.0 | PHP Environment Detector | Powered by GlowHost</p>
+        </div>
+    </footer>
 </body>
 </html>
