@@ -16,8 +16,8 @@ define('PHPINFO_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-f
 
 // Get current script URL for phpinfo detection
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$path = dirname($_SERVER['SCRIPT_NAME'] ?? '');
+$host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+$path = dirname(isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '');
 $base_url = rtrim($protocol . $host . $path, '/');
 
 /**
@@ -78,7 +78,7 @@ function downloadInstaller() {
 }
 
 // Main execution
-$step = $_GET['step'] ?? 'detect';
+$step = isset($_GET['step']) ? $_GET['step'] : 'detect';
 
 // Deploy phpinfo.php first
 if (!deployPhpInfo()) {
