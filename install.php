@@ -71,9 +71,7 @@ define('CONFIG_FILE', 'config.php');
 define('ADMIN_DIR', 'admin');
 
 // Security and session management (safe to use modern functions now)
-if (function_exists('session_status') && session_status() === PHP_SESSION_NONE) {
-    session_start();
-} else if (!isset($_SESSION)) {
+if (!session_id()) {
     session_start();
 }
 
