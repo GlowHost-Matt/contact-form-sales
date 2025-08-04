@@ -93,50 +93,19 @@ deployPhpInfo();
             line-height: 1.6;
         }
 
-        /* Official GlowHost Header */
-        .glowhost-header {
+        /* Simplified Header */
+        .simple-header {
             background: var(--primary-blue-600);
             color: white;
+            padding: 1rem 0;
+            text-align: center;
             position: relative;
         }
 
-        .glowhost-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-top: 1.5rem;
-            padding-bottom: 1.5rem;
-        }
-
-        .glowhost-logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .glowhost-support {
-            text-align: right;
-            font-size: 0.875rem;
-        }
-
-        .support-hours {
-            color: var(--cyan-200);
-            margin-bottom: 0.25rem;
-        }
-
-        .support-phone {
+        .simple-header h1 {
+            font-size: 1.25rem;
             font-weight: 600;
-        }
-
-        .support-phone a {
-            color: white;
-            text-decoration: none;
-        }
-
-        .support-phone a:hover {
-            color: var(--cyan-200);
+            margin: 0;
         }
 
         /* Main Container */
@@ -153,24 +122,7 @@ deployPhpInfo();
             overflow: hidden;
         }
 
-        .card-header {
-            background: var(--primary-blue-600);
-            color: white;
-            padding: 2rem;
-            text-align: center;
-            position: relative;
-        }
 
-        .card-header h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .card-header p {
-            color: var(--cyan-200);
-            font-size: 0.875rem;
-        }
 
         .card-content {
             padding: 2rem;
@@ -210,15 +162,27 @@ deployPhpInfo();
         }
 
         .error-box {
-            background: var(--red-100);
-            border-color: var(--red-600);
-            color: var(--gray-800);
+            background: #fee2e2;
+            border: 3px solid #dc2626;
+            color: #7f1d1d;
+        }
+
+        .error-box h3 {
+            color: #dc2626;
+            font-size: 1.25rem;
+            font-weight: 700;
         }
 
         .status-box h3 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .error-box h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #dc2626;
         }
 
         .status-box h4 {
@@ -302,19 +266,7 @@ deployPhpInfo();
             background: rgba(255, 255, 255, 0.25);
         }
 
-        /* Footer */
-        .footer {
-            background: var(--gray-100);
-            border-top: 1px solid var(--gray-200);
-            margin-top: 3rem;
-            padding: 1.5rem 0;
-            text-align: center;
-        }
 
-        .footer p {
-            color: var(--gray-500);
-            font-size: 0.875rem;
-        }
 
         /* Lists */
         ol {
@@ -369,17 +321,14 @@ deployPhpInfo();
     </style>
 </head>
 <body>
-    <!-- Official GlowHost Header -->
-    <header class="glowhost-header">
-        <div class="glowhost-container">
-            <div class="glowhost-logo">🌟 GlowHost</div>
-            <div class="glowhost-support">
-                <div class="support-hours">24 / 7 / 365 Support</div>
-                <div class="support-phone">
-                    Toll Free Sales <a href="tel:+18882934678">1 (888) 293-HOST</a>
-                </div>
-            </div>
-        </div>
+    <!-- Simplified Header -->
+    <header class="simple-header">
+        <?php if ($step === 'check'): ?>
+            <a href="?step=deploy" class="back-btn">← Back</a>
+        <?php elseif ($step === 'install'): ?>
+            <a href="?step=check" class="back-btn">← Back</a>
+        <?php endif; ?>
+        <h1>GlowHost Contact Form - PHP Version Check</h1>
     </header>
 
     <!-- Main Content -->
@@ -534,11 +483,6 @@ deployPhpInfo();
         </div>
     </div>
 
-    <!-- Professional Footer -->
-    <footer class="footer">
-        <div class="glowhost-container">
-            <p>Contact Form System v5.0 | PHP Environment Detector | Powered by GlowHost</p>
-        </div>
-    </footer>
+
 </body>
 </html>
