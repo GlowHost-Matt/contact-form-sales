@@ -180,7 +180,7 @@
             <div class="actions">
                 <p><strong>Ready to proceed with automated installation?</strong></p>
 
-                <button id="continue-btn" class="btn" onclick="proceedToInstaller()" disabled>
+                <button id="continue-btn" class="btn" disabled style="background: #9ca3af; cursor: not-allowed;">
                     Continue to Automated Installer
                 </button>
             </div>
@@ -219,7 +219,7 @@
     </div>
 
     <script>
-        // Simple JavaScript to enable continue button when checkboxes are checked
+        // JavaScript to properly manage continue button state
         function updateContinueButton() {
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             const continueBtn = document.getElementById('continue-btn');
@@ -234,22 +234,36 @@
             continueBtn.disabled = !allChecked;
             if (allChecked) {
                 continueBtn.style.background = '#10b981';
+                continueBtn.style.cursor = 'pointer';
             } else {
                 continueBtn.style.background = '#9ca3af';
+                continueBtn.style.cursor = 'not-allowed';
             }
         }
 
         function proceedToInstaller() {
-            // Direct redirect to working installer
-            window.location.href = 'installer.php';
+            // Only proceed if button is enabled
+            const continueBtn = document.getElementById('continue-btn');
+            if (!continueBtn.disabled) {
+                window.location.href = 'installer.php';
+            }
         }
 
-        // Add event listeners to checkboxes
+        // Initialize page functionality
         document.addEventListener('DOMContentLoaded', function() {
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const continueBtn = document.getElementById('continue-btn');
+
+            // Add event listeners to checkboxes
             checkboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', updateContinueButton);
             });
+
+            // Add click event to continue button
+            continueBtn.addEventListener('click', proceedToInstaller);
+
+            // Set initial disabled state
+            updateContinueButton();
         });
     </script>
 </body>
