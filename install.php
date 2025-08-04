@@ -1,191 +1,331 @@
 <?php
 /**
- * GlowHost Contact Form – Single-File Installer v3.0 (ASCII-safe)
- * Performs advanced diagnostics for server environment and download capabilities.
+ * GlowHost Contact Form System - Diagnostic Installer
+ * Version: 3.2 - Simple and Clear
+ *
+ * Tests server environment and provides actionable guidance for configuration issues.
  */
 
-// --- Configuration ---
-const GH_ZIP_URL  = 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip';
-const GH_HOST     = 'raw.githubusercontent.com';
-const TMP_ZIP     = 'glowhost-installer.zip';
-const INSTALL_DIR = 'install';
-const MIN_PHP     = '7.4.0';
+// Prevent timeouts during installation
+@set_time_limit(300);
+@ini_set('max_execution_time', 300);
 
-// --- Utility & Error Handling ---
-function fail($title, $message, $tech_details = '') {
+// Configuration
+define('GH_ZIP_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
+define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/README.md');
+define('MIN_PHP', '7.4.0');
+define('INSTALL_DIR', 'install');
+
+/**
+ * Display error page with clear guidance
+ */
+function show_error($title, $message, $details = null, $solutions = []) {
     http_response_code(500);
     header('Content-Type: text/html; charset=UTF-8');
-    echo '<!DOCTYPE html><html lang="en"><head><title>Installer Error</title><style>body{font-family:system-ui,sans-serif;color:#333;background:#f9fafb;margin:0;padding:2em}div.container{max-width:700px;margin:0 auto;padding:2em;background:white;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08)}h2{color:#c53030;border-bottom:1px solid #e5e7eb;padding-bottom:.5em;margin-top:0}p{line-height:1.6}pre{background:#f3f4f6;padding:1em;border-radius:6px;white-space:pre-wrap;word-wrap:break-word;font-family:monospace;border:1px solid #d1d5db;margin-top:.5em}</style></head><body><div class="container">';
-    echo '<h2>'.htmlspecialchars($title).'</h2><p>'.($message).'</p>';
-    if ($tech_details) {
-        echo '<pre>'.htmlspecialchars($tech_details).'</pre>';
-    }
-    echo '</div></body></html>';
-    if (file_exists(TMP_ZIP)) @unlink(TMP_ZIP);
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Installation Error - <?php echo htmlspecialchars($title); ?></title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; margin: 0; padding: 20px; background: #f8f9fa; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #dc3545; margin-top: 0; border-bottom: 2px solid #e9ecef; padding-bottom: 15px; }
+            .message { margin: 20px 0; }
+            .details { background: #f8f9fa; padding: 15px; border-left: 4px solid #6c757d; margin: 20px 0; border-radius: 4px; }
+            .solutions { background: #e7f3ff; padding: 20px; border-left: 4px solid #0066cc; margin: 20px 0; border-radius: 4px; }
+            .solutions h3 { color: #0066cc; margin-top: 0; }
+            .solutions ol { margin: 10px 0; padding-left: 20px; }
+            .solutions li { margin: 8px 0; }
+            pre { background: #f1f3f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1><?php echo htmlspecialchars($title); ?></h1>
+            <div class="message"><?php echo $message; ?></div>
+
+            <?php if ($details): ?>
+            <div class="details">
+                <strong>Technical Details:</strong><br>
+                <pre><?php echo htmlspecialchars($details); ?></pre>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($solutions)): ?>
+            <div class="solutions">
+                <h3>How to Fix This:</h3>
+                <ol>
+                    <?php foreach ($solutions as $solution): ?>
+                    <li><?php echo $solution; ?></li>
+                    <?php endforeach; ?>
+                </ol>
+            </div>
+            <?php endif; ?>
+
+            <div class="footer">
+                <p><strong>Need Help?</strong> Contact your hosting provider or server administrator with the technical details above.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
     exit;
 }
 
-// --- Step 1: Basic Prerequisites ---
-$errors = [];
-if (version_compare(PHP_VERSION, MIN_PHP, '<')) $errors[] = 'PHP version '.MIN_PHP.' or higher is required. You are running '.PHP_VERSION.'.';
-if (!class_exists('ZipArchive')) $errors[] = 'The PHP ZipArchive extension is missing or disabled.';
-if (!is_writable(__DIR__)) $errors[] = 'The directory <strong>'.htmlspecialchars(__DIR__).'</strong> is not writable by the web server.';
-if (!function_exists('curl_init') && !ini_get('allow_url_fopen')) $errors[] = 'Both cURL and allow_url_fopen are disabled. At least one is required for downloads.';
-if ($errors) {
-    fail('Prerequisites Not Met', 'Your server environment does not meet the minimum requirements to run the installer. Please resolve the following issues:<br><ul><li>' . implode('</li><li>', $errors) . '</li></ul>');
-}
+/**
+ * Test outbound HTTPS connectivity
+ */
+function test_connectivity() {
+    $test_url = GH_TEST_URL;
+    $timeout = 15;
 
-// --- Step 2: Advanced Connectivity Test ---
-function test_outbound_connection() {
-    $host = GH_HOST;
-    $port = 443;
-    $timeout = 15; // Increased timeout
-    $error_str = '';
-    $error_no = 0;
-
+    // Test with cURL if available
     if (function_exists('curl_init')) {
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL => 'https://' . $host,
+            CURLOPT_URL => $test_url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $timeout,
-            CURLOPT_CUSTOMREQUEST => 'HEAD',
-            CURLOPT_NOBODY => true,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'GlowHost Installer Connectivity Test/3.0'
+            CURLOPT_USERAGENT => 'GlowHost-Installer/3.2'
         ]);
-        curl_exec($ch);
+
+        $result = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
+        $error = curl_error($ch);
         curl_close($ch);
 
-        if ($http_code >= 200 && $http_code < 400) return ['success' => true];
-        return ['success' => false, 'method' => 'cURL', 'error' => "Received HTTP status $http_code. Error: $curl_error"];
-    }
-
-    if (ini_get('allow_url_fopen')) {
-        $stream_context = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
-        $socket = @fsockopen('ssl://' . $host, $port, $error_no, $error_str, $timeout);
-        if ($socket) {
-            fclose($socket);
-            return ['success' => true];
+        if ($result !== false && $http_code === 200) {
+            return ['success' => true, 'method' => 'cURL'];
         }
-        return ['success' => false, 'method' => 'fsockopen (for allow_url_fopen)', 'error' => "Error #$error_no: $error_str"];
+
+        return [
+            'success' => false,
+            'method' => 'cURL',
+            'error' => $error ?: "HTTP $http_code",
+            'details' => "URL: $test_url\nHTTP Code: $http_code\nError: $error"
+        ];
     }
 
-    return ['success' => false, 'method' => 'Unknown', 'error' => 'No valid download method could be tested.'];
+    // Test with file_get_contents if allow_url_fopen is enabled
+    if (ini_get('allow_url_fopen')) {
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => $timeout,
+                'user_agent' => 'GlowHost-Installer/3.2',
+                'follow_location' => 1
+            ]
+        ]);
+
+        $result = @file_get_contents($test_url, false, $context);
+        if ($result !== false) {
+            return ['success' => true, 'method' => 'file_get_contents'];
+        }
+
+        $error = error_get_last();
+        return [
+            'success' => false,
+            'method' => 'file_get_contents',
+            'error' => $error['message'] ?? 'Unknown error',
+            'details' => "URL: $test_url\nLast Error: " . ($error['message'] ?? 'Unknown')
+        ];
+    }
+
+    return [
+        'success' => false,
+        'method' => 'none',
+        'error' => 'No download method available',
+        'details' => 'Both cURL and allow_url_fopen are disabled'
+    ];
 }
 
-$connection_test = test_outbound_connection();
-if (!$connection_test['success']) {
-    $message = 'Your server cannot make outbound HTTPS connections to GitHub. This is required to download the application files. This is a server configuration issue, not a script error.<br><br><strong>What to do:</strong><br>Contact your hosting provider or server administrator and ask them to ensure that your server can connect to <strong>'.GH_HOST.'</strong> on port 443. This is often blocked by a firewall (like CSF or firewalld) or due to incorrect PHP/cURL SSL configurations.';
-    $tech_details = "Test Method: {$connection_test['method']}\nHost: " . GH_HOST . ":443\nError Details: {$connection_test['error']}";
-    fail('Outbound Connection Failed', $message, $tech_details);
-}
-
-// --- Step 3: Run the Installer (Full logic from v2.1) ---
-$wizard_path = __DIR__ . DIRECTORY_SEPARATOR . INSTALL_DIR . DIRECTORY_SEPARATOR . 'index.php';
-if (file_exists($wizard_path)) {
-    require $wizard_path;
+// Check if wizard already exists
+$wizard_file = __DIR__ . '/' . INSTALL_DIR . '/index.php';
+if (file_exists($wizard_file)) {
+    require $wizard_file;
     exit;
 }
 
-function download_zip($url, $dest) {
+// Step 1: Check PHP version
+if (version_compare(PHP_VERSION, MIN_PHP, '<')) {
+    show_error(
+        'PHP Version Too Old',
+        'This installer requires PHP ' . MIN_PHP . ' or higher. Your server is running PHP ' . PHP_VERSION . '.',
+        'Current PHP Version: ' . PHP_VERSION . "\nRequired: " . MIN_PHP . '+',
+        [
+            'Contact your hosting provider to upgrade to PHP ' . MIN_PHP . ' or higher',
+            'If you have access to server management, update your PHP installation',
+            'Check if your hosting control panel has PHP version selection options'
+        ]
+    );
+}
+
+// Step 2: Check required extensions
+$missing_extensions = [];
+if (!class_exists('ZipArchive')) $missing_extensions[] = 'ZipArchive';
+if (!function_exists('curl_init') && !ini_get('allow_url_fopen')) $missing_extensions[] = 'cURL or allow_url_fopen';
+
+if (!empty($missing_extensions)) {
+    show_error(
+        'Missing PHP Extensions',
+        'Required PHP extensions are not available: <strong>' . implode(', ', $missing_extensions) . '</strong>',
+        'Missing: ' . implode(', ', $missing_extensions),
+        [
+            'Contact your hosting provider to enable the missing PHP extensions',
+            'If you manage the server, install the required extensions using your package manager',
+            'For cURL: install php-curl package',
+            'For ZipArchive: install php-zip package',
+            'Restart your web server after installing extensions'
+        ]
+    );
+}
+
+// Step 3: Check directory permissions
+if (!is_writable(__DIR__)) {
+    show_error(
+        'Directory Not Writable',
+        'The installer cannot write to the current directory. The web server needs write permissions.',
+        'Directory: ' . __DIR__ . "\nWritable: No",
+        [
+            'Set directory permissions to 755 or 775: <code>chmod 755 ' . __DIR__ . '</code>',
+            'Ensure the web server user (usually www-data, apache, or nginx) owns the directory',
+            'If using cPanel or similar, use File Manager to set permissions',
+            'Contact your hosting provider if you cannot change permissions'
+        ]
+    );
+}
+
+// Step 4: Test outbound connectivity
+$connectivity = test_connectivity();
+if (!$connectivity['success']) {
+    $solutions = [
+        'Check if your server firewall allows outbound HTTPS connections on port 443',
+        'Verify that connections to <code>raw.githubusercontent.com</code> are not blocked',
+        'If using a firewall like CSF, add GitHub domains to the whitelist',
+        'Check PHP configuration - ensure <code>allow_url_fopen</code> is enabled or cURL is working',
+        'Contact your hosting provider about outbound connection restrictions'
+    ];
+
+    if ($connectivity['method'] === 'cURL') {
+        $solutions[] = 'cURL-specific: Check SSL certificate validation settings';
+        $solutions[] = 'Try disabling SSL verification temporarily (not recommended for production)';
+    }
+
+    show_error(
+        'Cannot Connect to GitHub',
+        'Your server cannot download files from GitHub. This is required to fetch the installation files.',
+        $connectivity['details'],
+        $solutions
+    );
+}
+
+// Step 5: Download and extract installer
+function download_file($url, $dest) {
     if (function_exists('curl_init')) {
-        $fp = fopen($dest, 'w+');
-        if ($fp === false) fail('File System Error', 'Failed to open local file for writing.', 'Path: ' . htmlspecialchars($dest));
+        $fp = fopen($dest, 'w');
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_FILE           => $fp,
+            CURLOPT_FILE => $fp,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 120,
-            CURLOPT_USERAGENT      => 'GlowHost-Installer/3.0',
-            CURLOPT_FAILONERROR    => true,
+            CURLOPT_TIMEOUT => 300,
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_USERAGENT => 'GlowHost-Installer/3.2'
         ]);
         $result = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
         curl_close($ch);
         fclose($fp);
-        if ($result === false) {
-             fail("Download Failed (cURL)", "The script passed the initial connection test, but the actual file download failed.", "HTTP code: $http_code. Error: " . htmlspecialchars($curl_error));
-        }
-        return true;
+        return $result !== false && $http_code === 200;
     }
-    if (ini_get('allow_url_fopen')) {
-        $context = stream_context_create(['http' => ['user_agent' => 'GlowHost-Installer/3.0', 'timeout' => 120, 'follow_location' => 1, 'max_redirects' => 20]]);
-        $data = @file_get_contents($url, false, $context);
-        if ($data === false) {
-            $last_error = error_get_last();
-            fail('Download Failed (file_get_contents)', 'The script passed the initial connection test, but the actual file download failed.', 'Last error: ' . htmlspecialchars($last_error['message'] ?? 'Unknown error'));
-        }
-        if (file_put_contents($dest, $data) === false) {
-            fail('File System Error', 'Failed to write downloaded data to local file.', 'Path: ' . htmlspecialchars($dest));
-        }
-        return true;
-    }
-    return false;
+
+    $data = file_get_contents($url);
+    return $data !== false && file_put_contents($dest, $data) !== false;
 }
 
-download_zip(GH_ZIP_URL, TMP_ZIP);
-
-if (!file_exists(TMP_ZIP) || filesize(TMP_ZIP) < 100000) {
-    $size = file_exists(TMP_ZIP) ? filesize(TMP_ZIP) : 0;
-    fail('Download Verification Failed', 'The downloaded file is missing or too small.', 'Expected > 100000 bytes, but got ' . $size . ' bytes.');
+$zip_file = 'installer-temp.zip';
+if (!download_file(GH_ZIP_URL, $zip_file)) {
+    show_error(
+        'Download Failed',
+        'Could not download the installation files from GitHub.',
+        'URL: ' . GH_ZIP_URL,
+        [
+            'Check your internet connection',
+            'Verify firewall settings allow downloads from GitHub',
+            'Try again in a few minutes in case of temporary network issues',
+            'Contact your hosting provider about download restrictions'
+        ]
+    );
 }
 
+// Extract ZIP file
 $zip = new ZipArchive();
-if ($zip->open(TMP_ZIP) !== TRUE) {
-    fail('Extraction Failed', 'Could not open the downloaded ZIP file. It may be corrupt or not a valid ZIP archive.');
+if ($zip->open($zip_file) !== TRUE) {
+    @unlink($zip_file);
+    show_error(
+        'Invalid ZIP File',
+        'The downloaded file is not a valid ZIP archive or is corrupted.',
+        'File: ' . $zip_file . "\nSize: " . (file_exists($zip_file) ? filesize($zip_file) : 0) . ' bytes',
+        [
+            'Try downloading again - the file may have been corrupted during transfer',
+            'Check available disk space on your server',
+            'Contact support if the problem persists'
+        ]
+    );
 }
 
-$tmp_extract_dir = __DIR__ . DIRECTORY_SEPARATOR . '_tmp_installer_' . uniqid();
-if (!mkdir($tmp_extract_dir, 0755, true)) {
-    fail('File System Error', 'Could not create temporary extraction directory. Check permissions.');
-}
-
-if (!$zip->extractTo($tmp_extract_dir)) {
+// Create temporary extraction directory
+$temp_dir = 'temp_extract_' . uniqid();
+if (!mkdir($temp_dir)) {
     $zip->close();
-    fail('Extraction Failed', 'Could not extract files from the ZIP archive.');
+    @unlink($zip_file);
+    show_error('Cannot Create Directory', 'Failed to create temporary extraction directory.');
 }
-$zip->close();
 
-$repo_dir_name = '';
-foreach (scandir($tmp_extract_dir) as $file) {
-    if ($file !== '.' && $file !== '..') {
-        $potential_dir = $tmp_extract_dir . DIRECTORY_SEPARATOR . $file;
-        if (is_dir($potential_dir)) {
-            $repo_dir_name = $file;
-            break;
-        }
+// Extract files
+$zip->extractTo($temp_dir);
+$zip->close();
+@unlink($zip_file);
+
+// Find the install directory
+$install_source = null;
+foreach (scandir($temp_dir) as $item) {
+    if ($item === '.' || $item === '..') continue;
+    $check_path = $temp_dir . '/' . $item . '/' . INSTALL_DIR;
+    if (is_dir($check_path) && file_exists($check_path . '/index.php')) {
+        $install_source = $check_path;
+        break;
     }
 }
-if (empty($repo_dir_name)) {
-    fail('Extraction Failed', 'Could not find the main repository directory inside the extracted ZIP file.');
+
+if (!$install_source) {
+    show_error('Installation Files Missing', 'Could not find the installation wizard in the downloaded files.');
 }
 
-$install_dir_source = $tmp_extract_dir . DIRECTORY_SEPARATOR . $repo_dir_name . DIRECTORY_SEPARATOR . INSTALL_DIR;
-if (!is_dir($install_dir_source)) {
-    fail('Extraction Failed', 'The "install" directory was not found inside the extracted ZIP archive.');
+// Move install directory to final location
+if (!rename($install_source, INSTALL_DIR)) {
+    show_error('Cannot Install', 'Failed to move installation files to the correct location.');
 }
 
-$final_install_dir = __DIR__ . DIRECTORY_SEPARATOR . INSTALL_DIR;
-if (is_dir($final_install_dir)) {
-    rename($final_install_dir, $final_install_dir . '_backup_' . time());
+// Cleanup
+function removeDir($dir) {
+    if (!is_dir($dir)) return;
+    $files = scandir($dir);
+    foreach ($files as $file) {
+        if ($file === '.' || $file === '..') continue;
+        $path = $dir . '/' . $file;
+        is_dir($path) ? removeDir($path) : unlink($path);
+    }
+    rmdir($dir);
 }
-if (!rename($install_dir_source, $final_install_dir)) {
-    fail('File System Error', 'Failed to move the extracted "install" directory into place. Check file permissions.');
-}
+removeDir($temp_dir);
 
-@unlink(TMP_ZIP);
-
-if (file_exists($wizard_path)) {
-    header("Location: " . INSTALL_DIR . "/index.php");
-    exit;
-} else {
-    fail('Installation Failed', 'The final installation files could not be found after extraction.');
-}
+// Success! Redirect to wizard
+header('Location: ' . INSTALL_DIR . '/index.php');
+exit;
 ?>
