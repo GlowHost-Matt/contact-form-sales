@@ -89,31 +89,43 @@ deployPhpInfo();
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             min-height: 100vh;
             line-height: 1.6;
+            font-size: 16px;
+            color: var(--gray-800);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Official GlowHost Header */
+        /* Modern GlowHost Header */
         .glowhost-header {
-            background: var(--glowhost-blue);
+            background: linear-gradient(135deg, var(--glowhost-blue) 0%, var(--glowhost-navy) 100%);
             color: white;
-            padding: 1rem 0;
+            padding: 1.25rem 0;
             position: relative;
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .header-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 1rem;
+            padding: 0 2rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
         .glowhost-logo {
-            height: 32px;
+            height: 36px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+            transition: transform 0.2s ease;
+        }
+
+        .glowhost-logo:hover {
+            transform: scale(1.02);
         }
 
         .support-info {
@@ -124,6 +136,8 @@ deployPhpInfo();
         .support-hours {
             color: var(--cyan-accent);
             margin-bottom: 0.25rem;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
         .support-phone {
@@ -133,10 +147,15 @@ deployPhpInfo();
         .support-phone a {
             color: white;
             text-decoration: none;
+            transition: all 0.2s ease;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
         }
 
         .support-phone a:hover {
             color: var(--cyan-accent);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
 
         .simple-header h1 {
@@ -145,39 +164,91 @@ deployPhpInfo();
             margin: 0;
         }
 
-        /* Main Container */
+        /* Modern Main Container */
         .main-container {
-            max-width: 900px;
-            margin: 2rem auto;
-            padding: 0 1rem;
+            max-width: 1000px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+        }
+
+        .page-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .page-title h1 {
+            color: var(--glowhost-navy);
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -0.025em;
+            background: linear-gradient(135deg, var(--glowhost-navy) 0%, var(--glowhost-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-title p {
+            color: var(--gray-600);
+            font-size: 1.125rem;
+            font-weight: 400;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .detection-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow:
+                0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .detection-card:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.15),
+                0 0 0 1px rgba(255, 255, 255, 0.3);
         }
 
 
 
         .card-content {
-            padding: 2rem;
+            padding: 3rem;
         }
 
         .section-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--gray-800);
-            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 2rem;
+            text-align: center;
+            letter-spacing: -0.025em;
         }
 
-        /* Status Boxes */
+        /* Modern Status Boxes */
         .status-box {
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            border: 1px solid;
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .status-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, currentColor, transparent);
         }
 
         .version-box {
