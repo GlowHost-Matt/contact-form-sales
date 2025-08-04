@@ -1,69 +1,86 @@
-## 🛠️ **PERMANENT SINGLE-FILE INSTALLER PIPELINE**
-### **Authoritative Source**
-- The file **`start.php`** in the root of the `main` branch of the GitHub repo **GlowHost-Matt/contact-form-sales** is the ONLY authoritative copy.
-- All production servers fetch it with:
-  ```bash
-  wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/start.php
-  ```
-### **Update Rules**
-1. **Every AI edit** to the installer **MUST** be committed & pushed to `main` via direct GitHub CLI _before_ telling the user to `wget`.
-2. **Never require copy-paste** – always provide a raw GitHub URL.
-3. The installer **downloads & extracts** the `installer.php` wizard automatically; no manual unzip commands should be necessary for end-users.
-4. Keep the installer **ASCII-safe** (no smart quotes) to avoid parse errors on shared hosts.
+# 🚨 AI CONTEXT & PERMANENT RULES 🚨
 
-### **Server Workflow (cPanel example)**
+## 🚨 CRITICAL SAFETY PROTOCOL - READ FIRST
+
+### Q: ANALYSIS-ONLY MODE - MANDATORY COMPLIANCE
+- ANY message starting with "q:" or "Q:" = ANALYSIS ONLY
+- NEVER take actions without explicit approval after q: questions
+- ALWAYS respond: "This is analysis-only per q: protocol"
+- VIOLATION = IMMEDIATE HALT - Ask user to confirm before proceeding
+
+**NUCLEAR RULE: If unsure about q: compliance, ASK before acting**
+
+---
+
+**Project**: GlowHost Enterprise Contact Form System
+**Version**: 3.0.0
+**Status**: ACTIVE DEVELOPMENT
+**Primary Goal**: Create a professional, database-driven contact form system with a one-click installer.
+
+---
+
+## 🎯 Core Objective: Single-File Installer
+
+The primary deliverable is a **single `install.php` file** (<100KB).
+
+### Installer Requirements:
+1. **Self-Contained**: No other files needed to start.
+2. **Auto-Download**: Fetches the latest release from a specified GitHub URL.
+3. **Pre-flight Checks**:
+    - `PHP Version >= 7.4`
+    - `ZipArchive` extension loaded.
+    - `allow_url_fopen` or `cURL` available.
+    - Directory is writable.
+4. **Error Handling**: Provides clear, user-friendly HTML error messages if checks fail.
+5. **Extraction**: Unzips the downloaded package.
+6. **Redirection**: Automatically forwards the user to the `/install/` wizard.
+7. **Cleanup**: Removes temporary files after extraction.
+
+---
+
+## 🔧 Deployment & Operational Pipeline
+
+### Command Safety Rule: ONE Command per Block
+- Provide **one command per copy block**. Avoid chaining multiple commands with `&&`.
+- If a command is longer than ~80 characters, split it across multiple lines **inside the fenced block** using a Bash back-slash continuation (`\`) so the copy button remains unobstructed, e.g.:
+    ```bash
+    wget \
+      https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php \
+      -O install.php
+    ```
+- **Never** use placeholders like `[your_domain]` in commands. Use the actual domain, e.g., `contact.glowhost.com`.
+
+### One-Command Installer Restore
+These are the permanent, single-command methods to deploy the installer.
+
+**1. Minimalist Installer (Downloads full wizard):**
 ```bash
-ssh contactglowhost@juliet
-cd ~/public_html
-rm -f start.php && wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/start.php
-chmod 644 start.php
+wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php -O install.php
+```
+
+**2. Full Progressive Installer (All-in-one):**
+```bash
+wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/installer.php -O installer.php
 ```
 
 ---
 
-## 🚨 **GITHUB OPERATIONS - MANDATORY RULE**
+## 🗂️ Project Structure
 
-### **NEVER Use task_agent for GitHub Operations**
-- **ALWAYS use direct `gh` CLI commands for GitHub operations**
-- **NEVER use `task_agent` with GitHub integration**
-- **Reason:** Task agent reports false success while failing silently, wasting hours of debugging time
-
-### **Working GitHub Patterns**
-```bash
-# Create/update file
-gh api repos/owner/repo/contents/file.ext \
-  --method PUT \
-  --field message="commit message" \
-  --field content="$(base64 -i file.ext)" \
-  --field branch="main"
-
-# Delete file  
-gh api repos/owner/repo/contents/file.ext \
-  --method DELETE \
-  --field message="delete file" \
-  --field sha="$(gh api repos/owner/repo/contents/file.ext --jq .sha)" \
-  --field branch="main"
-```
-
-### **Evidence of Failure**
-Multiple documented cases where task_agent claimed "Successfully committed" but GitHub showed no changes. Direct CLI commands work immediately and reliably.
+- `install.php`: Single-file, self-extracting installer.
+- `installer.php`: The full, multi-step progressive installation wizard.
+- `/install/`: Directory containing the wizard's steps and assets.
+- `/admin/`: Backend admin interface (generated after installation).
+- `config.php`: System configuration file (generated after installation).
 
 ---
 
-## 💬 **USER COMMUNICATION SHORTCUTS**
+## 🏆 Definition of Done
 
-### **Question Shortcut**
-When user types **`q:`** or **`Q:`** followed by a question, treat it as:
-> "Just a question, no commitment. Give me the pros and cons without taking any action."
+The project is complete when a non-technical user can:
+1. Upload a single `install.php` file to their web server.
+2. Navigate to `https://their-domain.com/install.php`.
+3. Successfully complete the installation wizard without errors.
+4. Log into a functional admin panel to view form submissions.
 
-**Examples:**
-- `q: should we rename the file?` 
-- `Q: what if we used a different approach?`
-
-**Response format:**
-1. Acknowledge it's analysis-only
-2. Provide clear pros/cons 
-3. Give recommendation
-4. Ask for explicit approval before any action
-
-This prevents accidental implementations and saves time on exploratory discussions.
+This document is the **single source of truth** for all AI agents to ensure continuity and prevent regressions.
