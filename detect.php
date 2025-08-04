@@ -449,8 +449,7 @@ deployPhpInfo();
             <a href="?step=check" class="back-btn">← Back</a>
         <?php endif; ?>
         <div class="header-container">
-            <img src="https://glowhost.com/wp-content/uploads/logo-sans-tagline.png"
-                 alt="GlowHost" class="glowhost-logo" />
+            <img src="https://glowhost.com/wp-content/uploads/logo-sans-tagline.png" alt="GlowHost" class="glowhost-logo" />
             <div class="support-info">
                 <div class="support-hours">24 / 7 / 365 Support</div>
                 <div class="support-phone">
