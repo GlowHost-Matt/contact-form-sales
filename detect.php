@@ -171,27 +171,9 @@ deployPhpInfo();
                     </div>
 
                     <div class="warning-box">
-                        <h4>🛠️ Required: Upgrade Your PHP Version</h4>
-
-                        <h5>Method 1: cPanel (Most Common)</h5>
-                        <ol>
-                            <li>Log into your hosting control panel</li>
-                            <li>Look for <strong>"MultiPHP Manager"</strong></li>
-                            <li>Select your domain</li>
-                            <li>Change PHP version to <strong>8.4</strong></li>
-                            <li>Apply and wait 5-10 minutes</li>
-                        </ol>
-
-                        <h5>Method 2: PHP Selector</h5>
-                        <ol>
-                            <li>Find <strong>"Select PHP Version"</strong> in cPanel</li>
-                            <li>Choose <strong>PHP 8.4</strong></li>
-                            <li>Enable extensions: PDO, cURL, ZIP</li>
-                            <li>Save settings</li>
-                        </ol>
-
-                        <h5>Need Help?</h5>
-                        <p>Contact your hosting provider: <em>"Please upgrade my PHP to version 8.4 for security and compatibility."</em></p>
+                        <h4>🛠️ Required: Upgrade Your PHP Version:</h4>
+                        <p>Use PHP Selector to change your PHP version.</p>
+                        <p>We can adopt modules, extensions or whatever the new "BS Bingo" is called later, but you need a modern PHP working.</p>
                     </div>
 
                     <div style="text-align: center;">
