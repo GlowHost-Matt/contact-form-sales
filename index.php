@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlowHost Contact Form - Pre-Installation Check</title>
+    <title>GlowHost Contact Form - PHP Version Check</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -31,6 +31,34 @@
             margin: 0 0 8px 0;
             font-size: 24px;
         }
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        .php-requirement {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            color: #92400e;
+            padding: 20px;
+            margin: 24px 32px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .php-requirement h2 {
+            margin: 0 0 12px 0;
+            font-size: 20px;
+            color: #92400e;
+        }
+        .php-requirement .version {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 8px 0;
+        }
         .content {
             padding: 32px;
         }
@@ -56,59 +84,21 @@
         }
         .btn {
             display: inline-block;
-            padding: 12px 24px;
+            padding: 16px 32px;
             background: #10b981;
             color: white;
             text-decoration: none;
-            border-radius: 6px;
-            font-weight: 500;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
             transition: background 0.2s;
             border: none;
             cursor: pointer;
-            font-size: 16px;
+            width: 100%;
+            text-align: center;
         }
         .btn:hover {
             background: #059669;
-        }
-        .btn-secondary {
-            background: #6b7280;
-        }
-        .btn-secondary:hover {
-            background: #4b5563;
-        }
-        .warning {
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-            color: #92400e;
-            padding: 16px;
-            border-radius: 6px;
-            margin: 20px 0;
-        }
-        .success {
-            background: #d1fae5;
-            border: 1px solid #10b981;
-            color: #065f46;
-            padding: 16px;
-            border-radius: 6px;
-            margin: 20px 0;
-        }
-        .checklist {
-            background: #eff6ff;
-            border: 1px solid #3b82f6;
-            border-radius: 6px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .checklist h4 {
-            margin-top: 0;
-            color: #1e40af;
-        }
-        .checklist ul {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-        .checklist li {
-            margin: 8px 0;
         }
         .actions {
             text-align: center;
@@ -116,69 +106,16 @@
             padding-top: 24px;
             border-top: 1px solid #e5e7eb;
         }
-
-        /* Large Interactive Checkboxes */
-        .confirmation-checkboxes {
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            padding: 20px;
             margin: 20px 0;
         }
-
-        .checkbox-large {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin: 16px 0;
-            padding: 16px;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .checkbox-large:hover {
-            background: #f1f5f9;
-            border-color: #cbd5e1;
-        }
-
-        .checkbox-large input[type="checkbox"] {
-            display: none;
-        }
-
-        .checkmark {
-            width: 24px;
-            height: 24px;
-            border: 2px solid #94a3b8;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-        }
-
-        .checkbox-large input[type="checkbox"]:checked + .checkmark {
-            background: #10b981;
-            border-color: #10b981;
-        }
-
-        .checkbox-large input[type="checkbox"]:checked + .checkmark::after {
-            content: '✓';
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .checkbox-text {
-            font-size: 16px;
-            font-weight: 500;
-            color: #374151;
-            flex: 1;
-        }
-
-        .checkbox-large input[type="checkbox"]:checked ~ .checkbox-text {
-            color: #065f46;
+        .info-box h4 {
+            margin-top: 0;
+            color: #1e40af;
         }
     </style>
 </head>
@@ -186,17 +123,19 @@
     <div class="container">
         <div class="header">
             <h1>GlowHost Contact Form System</h1>
-            <p>Pre-Installation Compatibility Check</p>
+            <p>Pre-Installation PHP Version Check</p>
+        </div>
+
+        <div class="php-requirement">
+            <h2>⚠️ PHP Version Requirement</h2>
+            <div class="version">PHP 7.4.0 or higher (8.1+ recommended)</div>
+            <p>Please verify your server meets this requirement before proceeding</p>
         </div>
 
         <div class="content">
-            <div class="warning">
-                <strong>⚠️ Important:</strong> Before proceeding with the automated installer, please manually verify your PHP version to prevent installation issues.
-            </div>
-
             <div class="step">
                 <h3>Step 1: Check Your PHP Version</h3>
-                <p>Run this command in your web hosting control panel, terminal, or create a temporary PHP file:</p>
+                <p>Use one of these methods to verify your current PHP version:</p>
 
                 <p><strong>Option A: Command Line</strong></p>
                 <div class="code-block">php -v</div>
@@ -204,59 +143,30 @@
                 <p><strong>Option B: Create a temporary PHP file</strong></p>
                 <div class="code-block">&lt;?php echo 'PHP Version: ' . PHP_VERSION; ?&gt;</div>
 
-                <p><strong>Option C: In hosting control panel</strong></p>
+                <p><strong>Option C: Check your hosting control panel</strong></p>
                 <p>Look for "PHP Version" or "PHP Settings" in your hosting control panel (cPanel, Plesk, etc.)</p>
             </div>
 
-            <div class="checklist">
-                <h4>📋 System Requirements Checklist</h4>
-                <ul>
-                    <li><strong>PHP Version:</strong> 7.4.0 or higher (8.1+ recommended)</li>
-                    <li><strong>Required Extensions:</strong> ZipArchive, cURL or allow_url_fopen, PDO, MySQLi</li>
-                    <li><strong>Database:</strong> MySQL 5.7+ or MariaDB 10.2+</li>
-                    <li><strong>Permissions:</strong> Web directory must be writable</li>
-                    <li><strong>Network:</strong> Outbound HTTPS connections allowed</li>
+            <div class="info-box">
+                <h4>💡 What Happens Next?</h4>
+                <p>After confirming your PHP version, the automated installer will:</p>
+                <ul style="margin: 10px 0; text-align: left;">
+                    <li>✅ Test your server environment automatically</li>
+                    <li>✅ Check for required PHP extensions</li>
+                    <li>✅ Verify database connectivity</li>
+                    <li>✅ Set up the contact form system</li>
                 </ul>
-            </div>
-
-            <div class="step">
-                <h3>Step 2: Confirm Your Readiness</h3>
-                <p><strong>⚠️ REQUIRED:</strong> You must check all 3 boxes below to proceed with installation.</p>
-
-                <div class="confirmation-checkboxes">
-                    <label class="checkbox-large">
-                        <input type="checkbox" id="php-version">
-                        <span class="checkmark"></span>
-                        <span class="checkbox-text">I have confirmed my PHP version is 7.4.0 or higher</span>
-                    </label>
-
-                    <label class="checkbox-large">
-                        <input type="checkbox" id="hosting-access">
-                        <span class="checkmark"></span>
-                        <span class="checkbox-text">I have web hosting with MySQL database access</span>
-                    </label>
-
-                    <label class="checkbox-large">
-                        <input type="checkbox" id="admin-access">
-                        <span class="checkmark"></span>
-                        <span class="checkbox-text">I have administrative access to this web directory</span>
-                    </label>
-                </div>
-
-                <p style="margin-top: 15px; font-style: italic; color: #6b7280;">
-                    💡 <strong>Note:</strong> Click each checkbox above to confirm you meet the requirements.
-                </p>
+                <p><strong>No manual verification needed for these items!</strong></p>
             </div>
 
             <div class="actions">
-                <p><strong>Ready to proceed with automated installation?</strong></p>
-
-                <button id="continue-btn" class="btn" disabled style="background: #9ca3af; cursor: not-allowed;">
+                <p style="margin-bottom: 16px;"><strong>Ready to proceed?</strong></p>
+                <button class="btn" onclick="proceedToInstaller()">
                     Continue to Automated Installer
                 </button>
             </div>
 
-            <div id="troubleshooting" style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e5e7eb;">
+            <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e5e7eb;">
                 <h3>📚 Troubleshooting Guide</h3>
 
                 <div class="step">
@@ -269,20 +179,11 @@
                 </div>
 
                 <div class="step">
-                    <h4>🗄️ Database Access Issues?</h4>
+                    <h4>❓ Not Sure About Your PHP Version?</h4>
                     <ul>
-                        <li><strong>Create Database:</strong> Use your hosting control panel to create a new MySQL database</li>
-                        <li><strong>Database User:</strong> Create a user with full privileges to the database</li>
-                        <li><strong>Connection Info:</strong> Note your database hostname, username, password, and database name</li>
-                    </ul>
-                </div>
-
-                <div class="step">
-                    <h4>🔒 Permission Issues?</h4>
-                    <ul>
-                        <li><strong>File Permissions:</strong> Set directory permissions to 755 or 775</li>
-                        <li><strong>Web Server User:</strong> Ensure the web server can write to this directory</li>
-                        <li><strong>Contact Support:</strong> If using shared hosting, contact your provider for assistance</li>
+                        <li><strong>Contact Support:</strong> Your hosting provider can tell you the current PHP version</li>
+                        <li><strong>File Manager:</strong> Create a file called <code>phpinfo.php</code> with content <code>&lt;?php phpinfo(); ?&gt;</code> and visit it in your browser</li>
+                        <li><strong>SSH Access:</strong> Run <code>php -v</code> in your terminal</li>
                     </ul>
                 </div>
             </div>
@@ -290,52 +191,10 @@
     </div>
 
     <script>
-        // JavaScript to properly manage continue button state
-        function updateContinueButton() {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-            const continueBtn = document.getElementById('continue-btn');
-
-            let allChecked = true;
-            checkboxes.forEach(checkbox => {
-                if (!checkbox.checked) {
-                    allChecked = false;
-                }
-            });
-
-            continueBtn.disabled = !allChecked;
-            if (allChecked) {
-                continueBtn.style.background = '#10b981';
-                continueBtn.style.cursor = 'pointer';
-            } else {
-                continueBtn.style.background = '#9ca3af';
-                continueBtn.style.cursor = 'not-allowed';
-            }
-        }
-
         function proceedToInstaller() {
-            // Only proceed if button is enabled
-            const continueBtn = document.getElementById('continue-btn');
-            if (!continueBtn.disabled) {
-                window.location.href = 'installer.php';
-            }
+            // Direct redirect to working installer
+            window.location.href = 'installer.php';
         }
-
-        // Initialize page functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-            const continueBtn = document.getElementById('continue-btn');
-
-            // Add event listeners to checkboxes
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', updateContinueButton);
-            });
-
-            // Add click event to continue button
-            continueBtn.addEventListener('click', proceedToInstaller);
-
-            // Set initial disabled state
-            updateContinueButton();
-        });
     </script>
 </body>
 </html>
