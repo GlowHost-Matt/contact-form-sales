@@ -1,10 +1,10 @@
 <?php
 /**
  * GlowHost Contact Form System - Complete Single-File Installer
- * Version: 4.0 - The One File Solution
+ * Version: 4.0 - PHP 5.2+ Compatible Entry Point
  */
 
-// CRITICAL: Check PHP version FIRST before using any modern syntax
+// CRITICAL: Check PHP version FIRST using only PHP 5.2 compatible syntax
 if (version_compare(PHP_VERSION, '7.4.0', '<')) {
     echo '<!DOCTYPE html>
 <html>
@@ -17,7 +17,6 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
         .current-version { background: #ffebee; padding: 15px; border-radius: 4px; margin: 15px 0; }
         .required-version { background: #e8f5e8; padding: 15px; border-radius: 4px; margin: 15px 0; }
         .instructions { background: #f5f5f5; padding: 20px; border-radius: 4px; margin: 20px 0; }
-        .code { background: #000; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -56,9 +55,10 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
     exit;
 }
 
+// PHP 7.4+ reached - now safe to use modern syntax
 // Prevent timeouts during installation
-@set_time_limit(300);
-@ini_set('max_execution_time', 300);
+set_time_limit(300);
+ini_set('max_execution_time', 300);
 
 // Configuration
 define('INSTALLER_VERSION', '4.0');
@@ -70,12 +70,12 @@ define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-f
 define('CONFIG_FILE', 'config.php');
 define('ADMIN_DIR', 'admin');
 
-// Security and session management
+// Security and session management (safe to use modern functions now)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// CSRF protection
+// CSRF protection (using modern PHP functions - safe after version check)
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
