@@ -699,7 +699,7 @@ if (isset($_GET["ajax"]) && isset($_GET["id"])) {
                 </div>
 
                 <button type=\"submit\" name=\"update_status\" class=\"btn btn-primary\">Update Status</button>
-                <button type=\"button\" class=\"btn\" onclick=\"document.getElementById('submissionModal').style.display='none'\">Close</button>
+                <button type=\"button\" class=\"btn\" onclick=\"document.getElementById(\'submissionModal\').style.display=\'none\'\">Close</button>
             </form>
         ";
 
