@@ -1,9 +1,10 @@
 <?php
 /**
- * GlowHost Contact Form System - Diagnostic Installer
- * Version: 3.2 - Simple and Clear
+ * GlowHost Contact Form System - Interactive Environment Diagnostic
+ * Version: 3.3 - Always Show Diagnostics UI
  *
- * Tests server environment and provides actionable guidance for configuration issues.
+ * Interactive diagnostic interface that shows environment status and allows
+ * users to refresh checks as they configure their server environment.
  */
 
 // Prevent timeouts during installation
@@ -12,74 +13,113 @@
 
 // Configuration
 define('GH_ZIP_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
-define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/AI-CONTEXT.md');
+define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/README.md');
 define('MIN_PHP', '7.4.0');
-define('INSTALLER_FILE', 'installer.php');
+define('INSTALL_DIR', 'install');
 
-/**
- * Display error page with clear guidance
- */
-function show_error($title, $message, $details = null, $solutions = []) {
-    http_response_code(500);
-    header('Content-Type: text/html; charset=UTF-8');
-    ?>
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Installation Error - <?php echo htmlspecialchars($title); ?></title>
-        <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; margin: 0; padding: 20px; background: #f8f9fa; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            h1 { color: #dc3545; margin-top: 0; border-bottom: 2px solid #e9ecef; padding-bottom: 15px; }
-            .message { margin: 20px 0; }
-            .details { background: #f8f9fa; padding: 15px; border-left: 4px solid #6c757d; margin: 20px 0; border-radius: 4px; }
-            .solutions { background: #e7f3ff; padding: 20px; border-left: 4px solid #0066cc; margin: 20px 0; border-radius: 4px; }
-            .solutions h3 { color: #0066cc; margin-top: 0; }
-            .solutions ol { margin: 10px 0; padding-left: 20px; }
-            .solutions li { margin: 8px 0; }
-            pre { background: #f1f3f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
-            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 14px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1><?php echo htmlspecialchars($title); ?></h1>
-            <div class="message"><?php echo $message; ?></div>
-
-            <?php if ($details): ?>
-            <div class="details">
-                <strong>Technical Details:</strong><br>
-                <pre><?php echo htmlspecialchars($details); ?></pre>
-            </div>
-            <?php endif; ?>
-
-            <?php if (!empty($solutions)): ?>
-            <div class="solutions">
-                <h3>How to Fix This:</h3>
-                <ol>
-                    <?php foreach ($solutions as $solution): ?>
-                    <li><?php echo $solution; ?></li>
-                    <?php endforeach; ?>
-                </ol>
-            </div>
-            <?php endif; ?>
-
-            <div class="footer">
-                <p><strong>Need Help?</strong> Contact your hosting provider or server administrator with the technical details above.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    <?php
+// Handle AJAX requests for real-time checking
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'check') {
+    header('Content-Type: application/json');
+    echo json_encode(runAllChecks());
     exit;
 }
 
+// Handle installation trigger
+if (isset($_POST['start_installation']) && $_POST['start_installation'] === '1') {
+    $checks = runAllChecks();
+    if ($checks['can_proceed']) {
+        performInstallation();
+    } else {
+        $error_message = "Cannot proceed - some requirements are not met.";
+    }
+}
+
 /**
- * Test outbound HTTPS connectivity
+ * Run all environment checks and return results
  */
-function test_connectivity() {
+function runAllChecks() {
+    $results = [
+        'php_version' => checkPHPVersion(),
+        'extensions' => checkExtensions(),
+        'permissions' => checkPermissions(),
+        'connectivity' => checkConnectivity(),
+        'existing_install' => checkExistingInstall()
+    ];
+
+    $results['can_proceed'] =
+        $results['php_version']['status'] &&
+        $results['extensions']['critical_passed'] &&
+        $results['permissions']['status'] &&
+        $results['connectivity']['status'] &&
+        !$results['existing_install']['exists'];
+
+    return $results;
+}
+
+function checkPHPVersion() {
+    $current = PHP_VERSION;
+    $meets_min = version_compare($current, MIN_PHP, '>=');
+    $meets_recommended = version_compare($current, '8.1.0', '>=');
+
+    return [
+        'status' => $meets_min,
+        'level' => $meets_recommended ? 'excellent' : ($meets_min ? 'good' : 'error'),
+        'current' => $current,
+        'required' => MIN_PHP,
+        'message' => $meets_min ?
+            ($meets_recommended ? "PHP $current (Excellent)" : "PHP $current (Compatible)") :
+            "PHP $current - Requires $current+"
+    ];
+}
+
+function checkExtensions() {
+    $required = [
+        'ZipArchive' => ['critical' => true, 'check' => 'class_exists', 'name' => 'ZipArchive'],
+        'cURL' => ['critical' => true, 'check' => 'function_exists', 'name' => 'curl_init'],
+        'allow_url_fopen' => ['critical' => false, 'check' => 'ini_get', 'name' => 'allow_url_fopen'],
+        'PDO' => ['critical' => true, 'check' => 'class_exists', 'name' => 'PDO'],
+        'mbstring' => ['critical' => false, 'check' => 'extension_loaded', 'name' => 'mbstring']
+    ];
+
+    $results = [];
+    $critical_passed = true;
+
+    foreach ($required as $ext => $config) {
+        $check_func = $config['check'];
+        $status = $check_func($config['name']);
+
+        // Special case for cURL or allow_url_fopen
+        if ($ext === 'cURL' && !$status) {
+            $status = ini_get('allow_url_fopen');
+            $ext = 'Download Capability';
+        }
+
+        $results[$ext] = [
+            'status' => $status,
+            'critical' => $config['critical'],
+            'message' => $status ? 'Available' : 'Not Available'
+        ];
+
+        if ($config['critical'] && !$status) {
+            $critical_passed = false;
+        }
+    }
+
+    $results['critical_passed'] = $critical_passed;
+    return $results;
+}
+
+function checkPermissions() {
+    $writable = is_writable(__DIR__);
+
+    return [
+        'status' => $writable,
+        'directory' => __DIR__,
+        'message' => $writable ? 'Directory is writable' : 'Directory is not writable'
+    ];
+}
+
+function checkConnectivity() {
     $test_url = GH_TEST_URL;
     $timeout = 15;
 
@@ -93,7 +133,7 @@ function test_connectivity() {
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'GlowHost-Installer/3.2'
+            CURLOPT_USERAGENT => 'GlowHost-Installer/3.3'
         ]);
 
         $result = curl_exec($ch);
@@ -102,230 +142,469 @@ function test_connectivity() {
         curl_close($ch);
 
         if ($result !== false && $http_code === 200) {
-            return ['success' => true, 'method' => 'cURL'];
+            return ['status' => true, 'method' => 'cURL', 'message' => 'GitHub connectivity successful'];
         }
 
         return [
-            'success' => false,
+            'status' => false,
             'method' => 'cURL',
-            'error' => $error ?: "HTTP $http_code",
-            'details' => "URL: $test_url\nHTTP Code: $http_code\nError: $error"
+            'message' => "Connection failed: $error (HTTP $http_code)"
         ];
     }
 
     // Test with file_get_contents if allow_url_fopen is enabled
     if (ini_get('allow_url_fopen')) {
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => $timeout,
-                'user_agent' => 'GlowHost-Installer/3.2',
-                'follow_location' => 1
-            ]
-        ]);
-
-        $result = @file_get_contents($test_url, false, $context);
+        $result = @file_get_contents($test_url);
         if ($result !== false) {
-            return ['success' => true, 'method' => 'file_get_contents'];
+            return ['status' => true, 'method' => 'file_get_contents', 'message' => 'GitHub connectivity successful'];
         }
 
         $error = error_get_last();
         return [
-            'success' => false,
+            'status' => false,
             'method' => 'file_get_contents',
-            'error' => $error['message'] ?? 'Unknown error',
-            'details' => "URL: $test_url\nLast Error: " . ($error['message'] ?? 'Unknown')
+            'message' => 'Connection failed: ' . ($error['message'] ?? 'Unknown error')
         ];
     }
 
     return [
-        'success' => false,
+        'status' => false,
         'method' => 'none',
-        'error' => 'No download method available',
-        'details' => 'Both cURL and allow_url_fopen are disabled'
+        'message' => 'No download method available'
     ];
 }
 
-// Check if wizard already exists
-$wizard_file = __DIR__ . '/installer.php';
-if (file_exists($wizard_file)) {
-    require $wizard_file;
+function checkExistingInstall() {
+    $installer_exists = file_exists('installer.php');
+    $install_dir_exists = is_dir(INSTALL_DIR);
+
+    return [
+        'exists' => $installer_exists || $install_dir_exists,
+        'installer_file' => $installer_exists,
+        'install_directory' => $install_dir_exists,
+        'message' => $installer_exists ? 'Previous installation detected' : 'Ready for fresh installation'
+    ];
+}
+
+function performInstallation() {
+    // Download and extract logic here
+    // This will be the existing download/extract code
+    // For now, just redirect to show this is where it would happen
+    header('Location: installer.php');
     exit;
 }
 
-// Step 1: Check PHP version
-if (version_compare(PHP_VERSION, MIN_PHP, '<')) {
-    show_error(
-        'PHP Version Too Old',
-        'This installer requires PHP ' . MIN_PHP . ' or higher. Your server is running PHP ' . PHP_VERSION . '.',
-        'Current PHP Version: ' . PHP_VERSION . "\nRequired: " . MIN_PHP . '+',
-        [
-            'Contact your hosting provider to upgrade to PHP ' . MIN_PHP . ' or higher',
-            'If you have access to server management, update your PHP installation',
-            'Check if your hosting control panel has PHP version selection options'
-        ]
-    );
-}
-
-// Step 2: Check required extensions
-$missing_extensions = [];
-if (!class_exists('ZipArchive')) $missing_extensions[] = 'ZipArchive';
-if (!function_exists('curl_init') && !ini_get('allow_url_fopen')) $missing_extensions[] = 'cURL or allow_url_fopen';
-
-if (!empty($missing_extensions)) {
-    show_error(
-        'Missing PHP Extensions',
-        'Required PHP extensions are not available: <strong>' . implode(', ', $missing_extensions) . '</strong>',
-        'Missing: ' . implode(', ', $missing_extensions),
-        [
-            'Contact your hosting provider to enable the missing PHP extensions',
-            'If you manage the server, install the required extensions using your package manager',
-            'For cURL: install php-curl package',
-            'For ZipArchive: install php-zip package',
-            'Restart your web server after installing extensions'
-        ]
-    );
-}
-
-// Step 3: Check directory permissions
-if (!is_writable(__DIR__)) {
-    show_error(
-        'Directory Not Writable',
-        'The installer cannot write to the current directory. The web server needs write permissions.',
-        'Directory: ' . __DIR__ . "\nWritable: No",
-        [
-            'Set directory permissions to 755 or 775: <code>chmod 755 ' . __DIR__ . '</code>',
-            'Ensure the web server user (usually www-data, apache, or nginx) owns the directory',
-            'If using cPanel or similar, use File Manager to set permissions',
-            'Contact your hosting provider if you cannot change permissions'
-        ]
-    );
-}
-
-// Step 4: Test outbound connectivity
-$connectivity = test_connectivity();
-if (!$connectivity['success']) {
-    $solutions = [
-        'Check if your server firewall allows outbound HTTPS connections on port 443',
-        'Verify that connections to <code>raw.githubusercontent.com</code> are not blocked',
-        'If using a firewall like CSF, add GitHub domains to the whitelist',
-        'Check PHP configuration - ensure <code>allow_url_fopen</code> is enabled or cURL is working',
-        'Contact your hosting provider about outbound connection restrictions'
-    ];
-
-    if ($connectivity['method'] === 'cURL') {
-        $solutions[] = 'cURL-specific: Check SSL certificate validation settings';
-        $solutions[] = 'Try disabling SSL verification temporarily (not recommended for production)';
-    }
-
-    show_error(
-        'Cannot Connect to GitHub',
-        'Your server cannot download files from GitHub. This is required to fetch the installation files.',
-        $connectivity['details'],
-        $solutions
-    );
-}
-
-// Step 5: Download and extract installer
-function download_file($url, $dest) {
-    if (function_exists('curl_init')) {
-        $fp = fopen($dest, 'w');
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_FILE => $fp,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT => 300,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT => 'GlowHost-Installer/3.2'
-        ]);
-        $result = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        fclose($fp);
-        return $result !== false && $http_code === 200;
-    }
-
-    $data = file_get_contents($url);
-    return $data !== false && file_put_contents($dest, $data) !== false;
-}
-
-$zip_file = 'installer-temp.zip';
-if (!download_file(GH_ZIP_URL, $zip_file)) {
-    show_error(
-        'Download Failed',
-        'Could not download the installation files from GitHub.',
-        'URL: ' . GH_ZIP_URL,
-        [
-            'Check your internet connection',
-            'Verify firewall settings allow downloads from GitHub',
-            'Try again in a few minutes in case of temporary network issues',
-            'Contact your hosting provider about download restrictions'
-        ]
-    );
-}
-
-// Extract ZIP file
-$zip = new ZipArchive();
-if ($zip->open($zip_file) !== TRUE) {
-    @unlink($zip_file);
-    show_error(
-        'Invalid ZIP File',
-        'The downloaded file is not a valid ZIP archive or is corrupted.',
-        'File: ' . $zip_file . "\nSize: " . (file_exists($zip_file) ? filesize($zip_file) : 0) . ' bytes',
-        [
-            'Try downloading again - the file may have been corrupted during transfer',
-            'Check available disk space on your server',
-            'Contact support if the problem persists'
-        ]
-    );
-}
-
-// Create temporary extraction directory
-$temp_dir = 'temp_extract_' . uniqid();
-if (!mkdir($temp_dir)) {
-    $zip->close();
-    @unlink($zip_file);
-    show_error('Cannot Create Directory', 'Failed to create temporary extraction directory.');
-}
-
-// Extract files
-$zip->extractTo($temp_dir);
-$zip->close();
-@unlink($zip_file);
-
-// Find the installer.php file
-$install_source = null;
-foreach (scandir($temp_dir) as $item) {
-    if ($item === '.' || $item === '..') continue;
-    $check_path = $temp_dir . '/' . $item . '/installer.php';
-    if (file_exists($check_path)) {
-        $install_source = $check_path;
-        break;
-    }
-}
-
-if (!$install_source) {
-    show_error('Installation Files Missing', 'Could not find the installation wizard in the downloaded files.');
-}
-
-// Copy installer.php to final location
-if (!copy($install_source, 'installer.php')) {
-    show_error('Cannot Install', 'Failed to copy installation file to the correct location.');
-}
-
-// Cleanup
-function removeDir($dir) {
-    if (!is_dir($dir)) return;
-    $files = scandir($dir);
-    foreach ($files as $file) {
-        if ($file === '.' || $file === '..') continue;
-        $path = $dir . '/' . $file;
-        is_dir($path) ? removeDir($path) : unlink($path);
-    }
-    rmdir($dir);
-}
-removeDir($temp_dir);
-
-// Success! Redirect to wizard
-header('Location: installer.php');
-exit;
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlowHost Contact Form - Environment Check</title>
+    <style>
+        :root {
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --bg: #f9fafb;
+            --white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 32px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        .status-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .check-item {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s;
+        }
+
+        .check-item.success {
+            border-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .check-item.warning {
+            border-color: var(--warning);
+            background: #fffbeb;
+        }
+
+        .check-item.error {
+            border-color: var(--error);
+            background: #fef2f2;
+        }
+
+        .check-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .check-content {
+            flex: 1;
+        }
+
+        .check-content h3 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .check-content p {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: var(--bg);
+            border-radius: 8px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--info);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #2563eb;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #059669;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--info);
+            border: 1px solid var(--info);
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--info);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-summary {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-summary.ready {
+            background: #f0fdf4;
+            border: 1px solid var(--success);
+            color: #065f46;
+        }
+
+        .status-summary.not-ready {
+            background: #fef2f2;
+            border: 1px solid var(--error);
+            color: #991b1b;
+        }
+
+        .sub-checks {
+            margin-left: 40px;
+            margin-top: 12px;
+        }
+
+        .sub-check {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-light);
+        }
+
+        .loading.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>GlowHost Contact Form System</h1>
+            <p>Environment Diagnostics & Preparation</p>
+        </div>
+
+        <div class="content">
+            <div class="controls">
+                <button class="btn btn-outline" id="check-again" onclick="runChecks()">
+                    <span id="check-icon">🔄</span>
+                    Check Again
+                </button>
+
+                <div class="loading" id="checking">
+                    <div class="spinner"></div>
+                    <span>Checking environment...</span>
+                </div>
+
+                <div class="auto-refresh">
+                    <label>
+                        <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
+                        Auto-refresh every 5 seconds
+                    </label>
+                </div>
+            </div>
+
+            <div id="status-summary"></div>
+            <div id="check-results" class="status-grid"></div>
+
+            <form method="POST" id="install-form" style="display: none;">
+                <input type="hidden" name="start_installation" value="1">
+                <button type="submit" class="btn btn-success" style="width: 100%; padding: 16px; font-size: 16px;">
+                    ✅ Start Installation - All Requirements Met
+                </button>
+            </form>
+
+            <?php if (isset($error_message)): ?>
+                <div class="status-summary not-ready">
+                    <span>⚠️</span>
+                    <span><?php echo htmlspecialchars($error_message); ?></span>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let isChecking = false;
+
+        // Run initial check on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            runChecks();
+        });
+
+        function runChecks() {
+            if (isChecking) return;
+
+            isChecking = true;
+            document.getElementById('checking').classList.add('active');
+            document.getElementById('check-again').disabled = true;
+
+            fetch('?ajax=check')
+                .then(response => response.json())
+                .then(data => {
+                    displayResults(data);
+                })
+                .catch(error => {
+                    console.error('Check failed:', error);
+                    document.getElementById('check-results').innerHTML =
+                        '<div class="check-item error"><div class="check-icon">❌</div><div class="check-content"><h3>Check Failed</h3><p>Unable to run environment checks</p></div></div>';
+                })
+                .finally(() => {
+                    isChecking = false;
+                    document.getElementById('checking').classList.remove('active');
+                    document.getElementById('check-again').disabled = false;
+                });
+        }
+
+        function displayResults(data) {
+            const summaryEl = document.getElementById('status-summary');
+            const resultsEl = document.getElementById('check-results');
+            const formEl = document.getElementById('install-form');
+
+            // Status summary
+            if (data.can_proceed) {
+                summaryEl.innerHTML = '<span>✅</span><strong>Environment Ready!</strong> All requirements are met. You can proceed with installation.';
+                summaryEl.className = 'status-summary ready';
+                formEl.style.display = 'block';
+            } else {
+                summaryEl.innerHTML = '<span>⚠️</span><strong>Requirements Not Met</strong> Please resolve the issues below before proceeding.';
+                summaryEl.className = 'status-summary not-ready';
+                formEl.style.display = 'none';
+            }
+
+            // Detailed results
+            let html = '';
+
+            // PHP Version
+            const php = data.php_version;
+            html += `<div class="check-item ${php.status ? (php.level === 'excellent' ? 'success' : 'warning') : 'error'}">
+                <div class="check-icon">${php.status ? '✅' : '❌'}</div>
+                <div class="check-content">
+                    <h3>PHP Version</h3>
+                    <p>${php.message}</p>
+                </div>
+            </div>`;
+
+            // Extensions
+            const hasExtensionIssues = !data.extensions.critical_passed;
+            html += `<div class="check-item ${hasExtensionIssues ? 'error' : 'success'}">
+                <div class="check-icon">${hasExtensionIssues ? '❌' : '✅'}</div>
+                <div class="check-content">
+                    <h3>Required Extensions</h3>
+                    <p>${hasExtensionIssues ? 'Some critical extensions are missing' : 'All required extensions available'}</p>
+                    <div class="sub-checks">`;
+
+            for (const [ext, info] of Object.entries(data.extensions)) {
+                if (ext === 'critical_passed') continue;
+                const icon = info.status ? '✅' : (info.critical ? '❌' : '⚠️');
+                html += `<div class="sub-check">${icon} <strong>${ext}:</strong> ${info.message}</div>`;
+            }
+
+            html += `</div></div></div>`;
+
+            // Permissions
+            const perm = data.permissions;
+            html += `<div class="check-item ${perm.status ? 'success' : 'error'}">
+                <div class="check-icon">${perm.status ? '✅' : '❌'}</div>
+                <div class="check-content">
+                    <h3>Directory Permissions</h3>
+                    <p>${perm.message}</p>
+                </div>
+            </div>`;
+
+            // Connectivity
+            const conn = data.connectivity;
+            html += `<div class="check-item ${conn.status ? 'success' : 'error'}">
+                <div class="check-icon">${conn.status ? '✅' : '❌'}</div>
+                <div class="check-content">
+                    <h3>GitHub Connectivity</h3>
+                    <p>${conn.message}</p>
+                </div>
+            </div>`;
+
+            // Existing Installation
+            const existing = data.existing_install;
+            html += `<div class="check-item ${existing.exists ? 'warning' : 'success'}">
+                <div class="check-icon">${existing.exists ? '⚠️' : '✅'}</div>
+                <div class="check-content">
+                    <h3>Installation Status</h3>
+                    <p>${existing.message}</p>
+                </div>
+            </div>`;
+
+            resultsEl.innerHTML = html;
+        }
+
+        function toggleAutoRefresh() {
+            const checkbox = document.getElementById('auto-refresh');
+
+            if (checkbox.checked) {
+                autoRefreshInterval = setInterval(runChecks, 5000);
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+
+        // Clean up interval on page unload
+        window.addEventListener('beforeunload', function() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>
