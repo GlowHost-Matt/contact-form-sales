@@ -12,7 +12,7 @@
 
 // Configuration
 define('GH_ZIP_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
-define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/README.md');
+define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/AI-CONTEXT.md');
 define('MIN_PHP', '7.4.0');
 define('INSTALL_DIR', 'install');
 
