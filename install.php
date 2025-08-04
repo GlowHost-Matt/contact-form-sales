@@ -14,7 +14,7 @@
 define('GH_ZIP_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
 define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/AI-CONTEXT.md');
 define('MIN_PHP', '7.4.0');
-define('INSTALL_DIR', 'install');
+define('INSTALLER_FILE', 'installer.php');
 
 /**
  * Display error page with clear guidance
@@ -146,7 +146,7 @@ function test_connectivity() {
 }
 
 // Check if wizard already exists
-$wizard_file = __DIR__ . '/' . INSTALL_DIR . '/index.php';
+$wizard_file = __DIR__ . '/installer.php';
 if (file_exists($wizard_file)) {
     require $wizard_file;
     exit;
@@ -292,12 +292,12 @@ $zip->extractTo($temp_dir);
 $zip->close();
 @unlink($zip_file);
 
-// Find the install directory
+// Find the installer.php file
 $install_source = null;
 foreach (scandir($temp_dir) as $item) {
     if ($item === '.' || $item === '..') continue;
-    $check_path = $temp_dir . '/' . $item . '/' . INSTALL_DIR;
-    if (is_dir($check_path) && file_exists($check_path . '/index.php')) {
+    $check_path = $temp_dir . '/' . $item . '/installer.php';
+    if (file_exists($check_path)) {
         $install_source = $check_path;
         break;
     }
@@ -307,9 +307,9 @@ if (!$install_source) {
     show_error('Installation Files Missing', 'Could not find the installation wizard in the downloaded files.');
 }
 
-// Move install directory to final location
-if (!rename($install_source, INSTALL_DIR)) {
-    show_error('Cannot Install', 'Failed to move installation files to the correct location.');
+// Copy installer.php to final location
+if (!copy($install_source, 'installer.php')) {
+    show_error('Cannot Install', 'Failed to copy installation file to the correct location.');
 }
 
 // Cleanup
@@ -326,6 +326,6 @@ function removeDir($dir) {
 removeDir($temp_dir);
 
 // Success! Redirect to wizard
-header('Location: ' . INSTALL_DIR . '/index.php');
+header('Location: installer.php');
 exit;
 ?>
