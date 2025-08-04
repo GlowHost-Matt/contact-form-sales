@@ -131,10 +131,10 @@ deployPhpInfo();
                 <?php elseif (version_compare($detected_version, '7.4.0', '>=')):  ?>
                     <!-- PHP 7.4-8.0 Compatible but recommend upgrade -->
                     <div class="warning-box">
-                        <h3>⚠️ PHP Version Compatible But Outdated</h3>
-                        <p><strong>Status:</strong> Will work, but not optimal</p>
-                        <p><strong>Recommendation:</strong> Upgrade to PHP 8.4 for best results</p>
-                        <p>Your current PHP version is functional but consider upgrading for better security and performance.</p>
+                        <h3>⚠️ PHP Version Compatible</h3>
+                        <p><strong>Status:</strong> Will work</p>
+                        <p><strong>Recommendation:</strong> Consider upgrading to PHP 8.4 for optimal performance</p>
+                        <p>Your current PHP version is functional. Upgrading provides enhanced security and performance.</p>
                     </div>
 
                     <div class="version-box">
@@ -155,10 +155,10 @@ deployPhpInfo();
                 <?php else: ?>
                     <!-- PHP < 7.4 Too old -->
                     <div class="error-box">
-                        <h3>🚨 PHP Version Too Old</h3>
+                        <h3>🚨 PHP Version Incompatible</h3>
                         <p><strong>Current:</strong> <?php echo htmlspecialchars($detected_version); ?></p>
                         <p><strong>Required:</strong> 7.4+ (8.4 recommended)</p>
-                        <p><strong>Your PHP version is over 10 years old and cannot run modern applications.</strong></p>
+                        <p>This installer requires a newer PHP version to function properly.</p>
                     </div>
 
                     <div class="warning-box">
