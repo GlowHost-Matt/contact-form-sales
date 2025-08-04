@@ -13,7 +13,7 @@
 
 // Configuration
 define('GH_ZIP_URL', 'https://github.com/GlowHost-Matt/contact-form-sales/archive/refs/heads/main.zip');
-define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/README.md');
+define('GH_TEST_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/AI-CONTEXT.md');
 define('MIN_PHP', '7.4.0');
 define('INSTALL_DIR', 'install');
 
@@ -120,57 +120,128 @@ function checkPermissions() {
 }
 
 function checkConnectivity() {
-    $test_url = GH_TEST_URL;
+    $results = [];
     $timeout = 15;
 
+    // Test multiple endpoints for comprehensive diagnostics
+    $test_endpoints = [
+        'github_raw' => GH_TEST_URL,
+        'github_api' => 'https://api.github.com/repos/GlowHost-Matt/contact-form-sales',
+        'connectivity_test' => 'https://httpbin.org/status/200'  // Third-party test
+    ];
+
+    $overall_success = false;
+    $detailed_results = [];
+
+    foreach ($test_endpoints as $name => $url) {
+        $endpoint_result = testSingleEndpoint($url, $timeout, $name);
+        $detailed_results[$name] = $endpoint_result;
+
+        if ($endpoint_result['success']) {
+            $overall_success = true;
+        }
+    }
+
+    // Determine primary message based on results
+    if ($overall_success) {
+        $message = 'Network connectivity successful';
+        if ($detailed_results['github_raw']['success']) {
+            $message = 'GitHub connectivity confirmed - ready for installation';
+        }
+    } else {
+        // Detailed diagnostic message
+        $issues = [];
+        if (!$detailed_results['connectivity_test']['success']) {
+            $issues[] = 'General internet connectivity blocked';
+        }
+        if (!$detailed_results['github_api']['success'] && !$detailed_results['github_raw']['success']) {
+            $issues[] = 'GitHub access blocked (firewall/DNS)';
+        }
+
+        $message = 'Connection failed: ' . implode(', ', $issues ?: ['Unknown network issue']);
+        $message .= ' | Search: "' . implode(' ', $issues) . ' shared hosting"';
+    }
+
+    return [
+        'status' => $overall_success,
+        'message' => $message,
+        'details' => $detailed_results,
+        'primary_test' => $detailed_results['github_raw'] ?? null
+    ];
+}
+
+function testSingleEndpoint($url, $timeout, $name) {
     // Test with cURL if available
     if (function_exists('curl_init')) {
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL => $test_url,
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $timeout,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'GlowHost-Installer/3.3'
+            CURLOPT_USERAGENT => 'GlowHost-Installer/3.3',
+            CURLOPT_NOBODY => true  // HEAD request for faster testing
         ]);
 
         $result = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
+        $info = curl_getinfo($ch);
         curl_close($ch);
 
-        if ($result !== false && $http_code === 200) {
-            return ['status' => true, 'method' => 'cURL', 'message' => 'GitHub connectivity successful'];
-        }
-
         return [
-            'status' => false,
+            'success' => ($result !== false && $http_code >= 200 && $http_code < 400),
             'method' => 'cURL',
-            'message' => "Connection failed: $error (HTTP $http_code)"
+            'http_code' => $http_code,
+            'error' => $error,
+            'url' => $url,
+            'response_time' => $info['total_time'] ?? 0,
+            'message' => $result !== false && $http_code >= 200 && $http_code < 400
+                ? "$name accessible (HTTP $http_code)"
+                : "$name failed - HTTP $http_code: $error"
         ];
     }
 
     // Test with file_get_contents if allow_url_fopen is enabled
     if (ini_get('allow_url_fopen')) {
-        $result = @file_get_contents($test_url);
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => $timeout,
+                'user_agent' => 'GlowHost-Installer/3.3',
+                'method' => 'HEAD'
+            ]
+        ]);
+
+        $start_time = microtime(true);
+        $result = @file_get_contents($url, false, $context);
+        $response_time = microtime(true) - $start_time;
+
         if ($result !== false) {
-            return ['status' => true, 'method' => 'file_get_contents', 'message' => 'GitHub connectivity successful'];
+            return [
+                'success' => true,
+                'method' => 'file_get_contents',
+                'url' => $url,
+                'response_time' => $response_time,
+                'message' => "$name accessible via file_get_contents"
+            ];
         }
 
         $error = error_get_last();
         return [
-            'status' => false,
+            'success' => false,
             'method' => 'file_get_contents',
-            'message' => 'Connection failed: ' . ($error['message'] ?? 'Unknown error')
+            'url' => $url,
+            'error' => $error['message'] ?? 'Unknown error',
+            'message' => "$name failed: " . ($error['message'] ?? 'Unknown error')
         ];
     }
 
     return [
-        'status' => false,
+        'success' => false,
         'method' => 'none',
-        'message' => 'No download method available'
+        'message' => 'No download method available (cURL and allow_url_fopen both disabled)'
     ];
 }
 
@@ -512,6 +583,9 @@ function performInstallation() {
             const resultsEl = document.getElementById('check-results');
             const formEl = document.getElementById('install-form');
 
+            // Update auto-refresh availability based on PHP version
+            updateAutoRefreshAvailability(data);
+
             // Status summary
             if (data.can_proceed) {
                 summaryEl.innerHTML = '<span>✅</span><strong>Environment Ready!</strong> All requirements are met. You can proceed with installation.';
@@ -568,9 +642,21 @@ function performInstallation() {
             html += `<div class="check-item ${conn.status ? 'success' : 'error'}">
                 <div class="check-icon">${conn.status ? '✅' : '❌'}</div>
                 <div class="check-content">
-                    <h3>GitHub Connectivity</h3>
-                    <p>${conn.message}</p>
-                </div>
+                    <h3>Network Connectivity</h3>
+                    <p>${conn.message}</p>`;
+
+            // Add detailed connectivity results if available
+            if (conn.details) {
+                html += `<div class="sub-checks">`;
+                for (const [name, detail] of Object.entries(conn.details)) {
+                    const icon = detail.success ? '✅' : '❌';
+                    const responseTime = detail.response_time ? ` (${Math.round(detail.response_time * 1000)}ms)` : '';
+                    html += `<div class="sub-check">${icon} <strong>${name}:</strong> ${detail.message}${responseTime}</div>`;
+                }
+                html += `</div>`;
+            }
+
+            html += `</div>
             </div>`;
 
             // Existing Installation
@@ -596,6 +682,27 @@ function performInstallation() {
                     clearInterval(autoRefreshInterval);
                     autoRefreshInterval = null;
                 }
+            }
+        }
+
+        function updateAutoRefreshAvailability(data) {
+            const checkbox = document.getElementById('auto-refresh');
+            const label = document.querySelector('.auto-refresh label');
+
+            // Disable auto-refresh if PHP version fails (old PHP likely can't handle AJAX properly)
+            if (!data.php_version.status) {
+                checkbox.disabled = true;
+                checkbox.checked = false;
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                label.innerHTML = '<input type="checkbox" id="auto-refresh" disabled> Auto-refresh disabled (PHP version too old)';
+                label.style.color = '#9ca3af';
+            } else {
+                checkbox.disabled = false;
+                label.innerHTML = '<input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()"> Auto-refresh every 5 seconds';
+                label.style.color = '';
             }
         }
 
