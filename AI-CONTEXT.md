@@ -16,6 +16,55 @@
 - If URL returns 404/500, identify the real issue and provide working solution
 - Include URL verification as standard QA step in all recommendations
 
+## 🚨 GITHUB OPERATIONS - MANDATORY RULE
+
+### **NEVER Use task_agent for GitHub Operations**
+- **ALWAYS use direct `gh` CLI commands for GitHub operations**
+- **NEVER use `task_agent` with GitHub integration**
+- **Reason:** Task agent reports false success while failing silently, wasting hours of debugging time
+
+### **Working GitHub Patterns**
+```bash
+# Create/update file
+gh api repos/owner/repo/contents/file.ext \
+  --method PUT \
+  --field message="commit message" \
+  --field content="$(base64 -i file.ext)" \
+  --field branch="main"
+
+# Delete file
+gh api repos/owner/repo/contents/file.ext \
+  --method DELETE \
+  --field message="delete file" \
+  --field sha="$(gh api repos/owner/repo/contents/file.ext --jq .sha)" \
+  --field branch="main"
+```
+
+### **Evidence of Failure**
+Multiple documented cases where task_agent claimed "Successfully committed" but GitHub showed no changes. Direct CLI commands work immediately and reliably.
+
+**WORKFLOW REQUIREMENT:** Every AI edit to installer files MUST be committed via `gh` CLI before providing wget URLs to user.
+
+## 🚨 MANDATORY FIRST CHECKS - BEFORE ANY ACTION
+
+### **Pre-Action Checklist** (Check EVERY time before responding):
+1. **Q: Protocol Check:** Does message start with "q:" or "Q:"? → Analysis only, no actions
+2. **GitHub Rule Check:** Need GitHub operation? → Use `gh` CLI, NEVER task_agent
+3. **URL Testing:** Directing to URL? → Test with web_scrape first
+4. **Installer Updates:** Changed installer? → Commit via `gh` CLI before wget URLs
+
+### **Violation Response Protocol**
+If ANY rule violated:
+1. IMMEDIATELY acknowledge violation
+2. Explain what should have happened
+3. ASK for permission before proceeding
+4. Document the failure for prevention
+
+### **Critical Reminder**
+- When in doubt, ASK first
+- User should never need to add safety reminders to prompts
+- These rules exist to prevent wasted time and money
+
 ---
 
 **Project**: GlowHost Enterprise Contact Form System
