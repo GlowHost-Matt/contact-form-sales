@@ -183,12 +183,6 @@
                 <button id="continue-btn" class="btn" onclick="proceedToInstaller()" disabled>
                     Continue to Automated Installer
                 </button>
-
-                <br><br>
-
-                <a href="#troubleshooting" class="btn btn-secondary">
-                    Need Help? View Troubleshooting Guide
-                </a>
             </div>
 
             <div id="troubleshooting" style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e5e7eb;">
@@ -246,10 +240,8 @@
         }
 
         function proceedToInstaller() {
-            // Simple confirmation
-            if (confirm('You have confirmed your server meets the requirements. Proceed to the automated installer?')) {
-                window.location.href = 'start.php';
-            }
+            // Direct redirect to working installer
+            window.location.href = 'installer.php';
         }
 
         // Add event listeners to checkboxes
