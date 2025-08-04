@@ -460,16 +460,6 @@ deployPhpInfo();
         </div>
 
         <div class="detection-card">
-            <div class="card-header">
-                <?php if ($step === 'check'): ?>
-                    <a href="?step=deploy" class="back-btn">← Back</a>
-                <?php elseif ($step === 'install'): ?>
-                    <a href="?step=check" class="back-btn">← Back</a>
-                <?php endif; ?>
-                <h1>Contact Form System</h1>
-                <p>PHP Environment Detection</p>
-            </div>
-
             <div class="card-content">
 
                 <?php if ($step === 'deploy'): ?>
@@ -492,7 +482,7 @@ deployPhpInfo();
 
             if ($detected_version === false):
             ?>
-                <h2>❌ Could Not Detect PHP Version</h2>
+                <h2 class="section-title">❌ Could Not Detect PHP Version</h2>
                 <div class="error-box">
                     <p><strong>Automatic detection failed.</strong></p>
                     <p>This could mean your server has restrictions on accessing phpinfo.</p>
