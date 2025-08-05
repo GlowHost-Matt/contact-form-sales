@@ -572,17 +572,23 @@ deployPhpInfo();
 
             <div class="success-box">
                 <h3>✅ PHP Version Compatible!</h3>
-                <p>Downloading the full installation wizard...</p>
-            </div>
-
-            <div class="version-box">
-                <h4>Manual Download Command:</h4>
-                <pre style="background: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto;">wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php -O install.php</pre>
-
-                <p><strong>Then visit:</strong> <code>install.php</code> in your browser</p>
+                <p><strong>Ready to download the installer</strong> - manual download required</p>
+                <p><em>Note: No automatic download occurs. You must run the command below manually.</em></p>
             </div>
 
             <div class="warning-box">
+                <h4>📋 REQUIRED: Manual Download Step</h4>
+                <p><strong>You must run this command in your terminal/SSH:</strong></p>
+                <pre style="background: #f3f4f6; padding: 15px; border-radius: 8px; overflow-x: auto; border-left: 4px solid var(--yellow-600); font-weight: bold; font-size: 0.9rem;">wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php -O install.php</pre>
+                
+                <p style="margin-top: 1rem;"><strong>After running the command above, then visit:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">install.php</code> in your browser</p>
+                
+                <p style="margin-top: 1rem; color: var(--gray-600); font-style: italic;">
+                    💡 <strong>Why manual?</strong> The install.php file doesn't exist on your server yet and must be downloaded first using the wget command above.
+                </p>
+            </div>
+
+            <div class="version-box">
                 <h4>🧹 Cleanup (After Successful Installation):</h4>
                 <p>You can safely delete these diagnostic files:</p>
                 <ul>
@@ -592,7 +598,7 @@ deployPhpInfo();
             </div>
 
                 <div class="btn-actions">
-                    <a href="install.php" class="btn btn-success">🏁 Start Installation</a>
+                    <a href="install.php" class="btn btn-success">🏁 Start Installation (After Download)</a>
                 </div>
                 <?php endif; ?>
             </div>
