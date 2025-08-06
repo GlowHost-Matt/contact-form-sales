@@ -1,17 +1,15 @@
 <?php
 /**
  * GlowHost Contact Form - System Requirements Check
- * Version: 1.0 - Simplified, Reliable Detection
+ * Version: 1.1 - Simplified, Reliable Detection
  */
-
 // Prevent timeouts during checks
 set_time_limit(60);
-
 // Configuration
 define('MIN_PHP_VERSION', '7.4.0');
 define('RECOMMENDED_PHP_VERSION', '8.1.0');
-define('INSTALLER_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/installer.php');
-
+define('INSTALLER_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php');
+define('GITHUB_BASE_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/');
 // Run system checks (executed directly, no AJAX)
 $system_checks = [
     'php_version' => checkPHPVersion(),
@@ -19,14 +17,12 @@ $system_checks = [
     'directory_permissions' => checkDirectoryPermissions(),
     'connectivity' => checkConnectivity()
 ];
-
 // Calculate overall qualification status
 $system_qualified =
     $system_checks['php_version']['status'] &&
     $system_checks['extensions']['critical_passed'] &&
     $system_checks['directory_permissions']['status'] &&
     $system_checks['connectivity']['status'];
-
 /**
  * CHECKING FUNCTIONS - Reliable, simple checks
  */
@@ -34,7 +30,6 @@ function checkPHPVersion() {
     $current = PHP_VERSION;
     $meets_min = version_compare($current, MIN_PHP_VERSION, '>=');
     $meets_recommended = version_compare($current, RECOMMENDED_PHP_VERSION, '>=');
-
     return [
         'status' => $meets_min,
         'level' => $meets_recommended ? 'excellent' : ($meets_min ? 'compatible' : 'incompatible'),
@@ -46,7 +41,6 @@ function checkPHPVersion() {
             "PHP $current - Incompatible (requires " . MIN_PHP_VERSION . "+)"
     ];
 }
-
 function checkRequiredExtensions() {
     $extensions = [
         'PDO' => ['critical' => true, 'check' => 'class_exists', 'name' => 'PDO', 'message' => 'Required for database connectivity'],
@@ -54,14 +48,11 @@ function checkRequiredExtensions() {
         'cURL or allow_url_fopen' => ['critical' => true, 'check' => 'custom', 'name' => 'curl_init', 'message' => 'Required for downloading components'],
         'mbstring' => ['critical' => false, 'check' => 'extension_loaded', 'name' => 'mbstring', 'message' => 'Recommended for text processing']
     ];
-
     $results = [];
     $critical_passed = true;
     $optional_passed = true;
-
     foreach ($extensions as $name => $extension) {
         $status = false;
-
         if ($extension['check'] === 'custom' && $name === 'cURL or allow_url_fopen') {
             // Special case for download capability
             $status = function_exists('curl_init') || ini_get('allow_url_fopen');
@@ -70,31 +61,26 @@ function checkRequiredExtensions() {
             $check_name = $extension['name'];
             $status = $check_func($check_name);
         }
-
         $results[$name] = [
             'status' => $status,
             'critical' => $extension['critical'],
             'message' => $extension['message']
         ];
-
         if ($extension['critical'] && !$status) {
             $critical_passed = false;
         } elseif (!$extension['critical'] && !$status) {
             $optional_passed = false;
         }
     }
-
     return [
         'results' => $results,
         'critical_passed' => $critical_passed,
         'optional_passed' => $optional_passed
     ];
 }
-
 function checkDirectoryPermissions() {
     $dir = __DIR__;
     $writable = is_writable($dir);
-
     return [
         'status' => $writable,
         'directory' => $dir,
@@ -103,22 +89,20 @@ function checkDirectoryPermissions() {
             "Directory is not writable - chmod or chown required"
     ];
 }
-
 function checkConnectivity() {
-    $test_url = 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/README.md';
+    $test_url = GITHUB_BASE_URL . 'README.md';
     $success = false;
     $method = '';
     $message = '';
-
     // Try cURL first
     if (function_exists('curl_init')) {
         $ch = curl_init($test_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Added for some hosts with SSL issues
         $result = curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-
         if ($result !== false && $status == 200) {
             $success = true;
             $method = 'cURL';
@@ -129,9 +113,11 @@ function checkConnectivity() {
     }
     // Try file_get_contents if cURL failed or isn't available
     elseif (ini_get('allow_url_fopen')) {
-        $context = stream_context_create(['http' => ['timeout' => 10]]);
+        $context = stream_context_create([
+            'http' => ['timeout' => 10],
+            'ssl' => ['verify_peer' => false, 'verify_peer_name' => false], // Added for hosts with SSL issues
+        ]);
         $result = @file_get_contents($test_url, false, $context);
-
         if ($result !== false) {
             $success = true;
             $method = 'file_get_contents';
@@ -142,16 +128,14 @@ function checkConnectivity() {
     } else {
         $message = "No download method available (requires cURL or allow_url_fopen)";
     }
-
     return [
         'status' => $success,
         'method' => $method,
         'message' => $message
     ];
 }
-
 /**
- * Deploy phpinfo for additional diagnostics
+ * Helper functions for downloading installer and diagnostics
  */
 function deployPhpInfo() {
     if (!file_exists('phpinfo.php')) {
@@ -160,7 +144,63 @@ function deployPhpInfo() {
     }
     return file_exists('phpinfo.php');
 }
-
+function downloadFile($url, $destination) {
+    $success = false;
+    $error = '';
+    // Try cURL first
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        $fp = @fopen($destination, 'w');
+        if ($fp) {
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_exec($ch);
+            if (curl_errno($ch)) {
+                $error = "cURL error: " . curl_error($ch);
+            } else {
+                $success = true;
+            }
+            curl_close($ch);
+            fclose($fp);
+        } else {
+            $error = "Could not open file for writing: $destination";
+        }
+    }
+    // Try file_get_contents if cURL failed or isn't available
+    elseif (!$success && ini_get('allow_url_fopen')) {
+        $context = stream_context_create([
+            'http' => ['timeout' => 60],
+            'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
+        ]);
+        $content = @file_get_contents($url, false, $context);
+        if ($content !== false) {
+            $success = @file_put_contents($destination, $content) !== false;
+            if (!$success) {
+                $error = "Could not write to file: $destination";
+            }
+        } else {
+            $error = "Could not download file with file_get_contents";
+        }
+    } else if (!$success) {
+        $error = "No download method available";
+    }
+    return [
+        'success' => $success,
+        'error' => $error
+    ];
+}
+// Process download request if system is qualified
+$download_result = ['success' => false, 'message' => ''];
+if ($system_qualified && isset($_GET['download']) && $_GET['download'] === 'installer') {
+    $download = downloadFile(INSTALLER_URL, 'install.php');
+    $download_result = [
+        'success' => $download['success'],
+        'message' => $download['success']
+            ? 'Installer downloaded successfully. <a href="install.php">Click here to run the installer</a>.'
+            : 'Failed to download installer: ' . $download['error']
+    ];
+}
 // Create phpinfo.php for extra diagnostics
 deployPhpInfo();
 ?>
@@ -185,7 +225,6 @@ deployPhpInfo();
             --gray-700: #374151;
             --gray-800: #1f2937;
         }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             line-height: 1.5;
@@ -194,25 +233,21 @@ deployPhpInfo();
             margin: 0;
             padding: 0;
         }
-
         .header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             padding: 1.5rem;
             text-align: center;
         }
-
         .header img {
             max-height: 40px;
             margin-bottom: 1rem;
         }
-
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 2rem;
         }
-
         .card {
             background: white;
             border-radius: 8px;
@@ -220,7 +255,6 @@ deployPhpInfo();
             padding: 2rem;
             margin-bottom: 2rem;
         }
-
         .status-box {
             padding: 1.5rem;
             border-radius: 8px;
@@ -229,7 +263,6 @@ deployPhpInfo();
             align-items: center;
             gap: 1rem;
         }
-
         .status-icon {
             font-size: 1.5rem;
             width: 2rem;
@@ -241,75 +274,61 @@ deployPhpInfo();
             border-radius: 50%;
             background: white;
         }
-
         .status-success {
             background-color: #f0fdf4;
             border: 1px solid #bbf7d0;
         }
-
         .status-warning {
             background-color: #fffbeb;
             border: 1px solid #fde68a;
         }
-
         .status-error {
             background-color: #fef2f2;
             border: 1px solid #fecaca;
         }
-
         .check-grid {
             display: grid;
             gap: 1rem;
         }
-
         .check-item {
             padding: 1rem;
             border-radius: 8px;
             border: 1px solid var(--gray-200);
         }
-
         .check-item.success {
             border-color: #bbf7d0;
             background-color: #f0fdf4;
         }
-
         .check-item.warning {
             border-color: #fde68a;
             background-color: #fffbeb;
         }
-
         .check-item.error {
             border-color: #fecaca;
             background-color: #fef2f2;
         }
-
         .check-header {
             display: flex;
             align-items: center;
             gap: 0.75rem;
             margin-bottom: 0.5rem;
         }
-
         .check-title {
             flex: 1;
         }
-
         .check-title h3 {
             margin: 0 0 0.25rem 0;
             font-size: 1rem;
         }
-
         .check-title .status {
             font-size: 0.875rem;
             color: var(--gray-700);
         }
-
         .check-detail {
             margin-top: 0.5rem;
             font-size: 0.875rem;
             padding-left: 2.75rem;
         }
-
         .button {
             display: inline-block;
             padding: 0.75rem 1.5rem;
@@ -321,19 +340,15 @@ deployPhpInfo();
             cursor: pointer;
             border: none;
         }
-
         .button:hover {
             background-color: var(--primary-dark);
         }
-
         .button-success {
             background-color: var(--success);
         }
-
         .button-success:hover {
             background-color: #15803d;
         }
-
         .command-box {
             background-color: #1e293b;
             color: white;
@@ -343,10 +358,24 @@ deployPhpInfo();
             overflow-x: auto;
             margin: 1rem 0;
         }
-
         .action-container {
             margin-top: 2rem;
             text-align: center;
+        }
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        .alert-success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+        .alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
         }
     </style>
 </head>
@@ -356,8 +385,23 @@ deployPhpInfo();
         <h1>Contact Form System - Environment Check</h1>
         <p>Verifying your server compatibility</p>
     </div>
-
     <div class="container">
+        <?php if (isset($_GET['download']) && $_GET['download'] === 'installer'): ?>
+            <!-- Download Result Message -->
+            <div class="card">
+                <div class="alert <?php echo $download_result['success'] ? 'alert-success' : 'alert-error'; ?>">
+                    <?php echo $download_result['message']; ?>
+                </div>
+                <div class="action-container">
+                    <?php if ($download_result['success']): ?>
+                        <a href="install.php" class="button button-success">Run Installer</a>
+                    <?php else: ?>
+                        <a href="?" class="button">Back to System Check</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Overall System Status -->
         <div class="card">
             <div class="status-box <?php echo $system_qualified ? 'status-success' : 'status-error'; ?>">
@@ -507,10 +551,11 @@ deployPhpInfo();
                 <?php if ($system_qualified): ?>
                     <div>
                         <p>Run this command to download the installer:</p>
-                        <div class="command-box">wget <?php echo INSTALLER_URL; ?> -O installer.php</div>
-                        <p>Then visit <a href="installer.php">installer.php</a> in your browser</p>
+                        <div class="command-box">wget <?php echo INSTALLER_URL; ?> -O install.php</div>
+                        <p>Then visit <a href="install.php">install.php</a> in your browser</p>
                     </div>
-                    <a href="<?php echo INSTALLER_URL; ?>" class="button button-success" download="installer.php">Download Installer</a>
+                    <a href="?download=installer" class="button button-success">Download Installer</a>
+                    <a href="<?php echo INSTALLER_URL; ?>" class="button" download="install.php">Direct Download</a>
                 <?php else: ?>
                     <button onclick="location.reload()" class="button">Refresh Checks</button>
                 <?php endif; ?>
