@@ -1,14 +1,14 @@
 <?php
 /**
  * GlowHost Contact Form - System Requirements Check
- * Version: 1.3 - Enhanced Debugging and 404 Fix
+ * Version: 1.4 - Clear Download Option Explanations
  */
 
 // Prevent timeouts during checks
 set_time_limit(60);
 
 // Configuration
-define('APP_VERSION', '1.3');
+define('APP_VERSION', '1.4');
 define('MIN_PHP_VERSION', '7.4.0');
 define('RECOMMENDED_PHP_VERSION', '8.1.0');
 define('INSTALLER_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php');
@@ -640,7 +640,7 @@ deployPhpInfo();
             <div class="action-container">
                 <?php if ($system_qualified): ?>
                     <div>
-                        <p>Run this command to download the installer:</p>
+                        <h3>Choose Your Installation Method:</h3><div style="margin: 1rem 0; padding: 1rem; background: #f3f4f6; border-radius: 8px;"><p><strong>🎯 Recommended: Download Installer</strong> - Downloads directly to your server (automatic)</p><p><strong>💾 Alternative: Direct Download</strong> - Downloads to your computer (manual upload required)</p></div><p>Or use this command to download manually:</p>
                         <div class="command-box">wget <?php echo INSTALLER_URL; ?> -O install.php</div>
                         <p>Then visit <a href="install.php">install.php</a> in your browser</p>
                     </div>
