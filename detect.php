@@ -1,15 +1,19 @@
 <?php
 /**
  * GlowHost Contact Form - System Requirements Check
- * Version: 1.1 - Simplified, Reliable Detection
+ * Version: 1.2 - Enhanced with Version Display
  */
+
 // Prevent timeouts during checks
 set_time_limit(60);
+
 // Configuration
+define('APP_VERSION', '1.2');
 define('MIN_PHP_VERSION', '7.4.0');
 define('RECOMMENDED_PHP_VERSION', '8.1.0');
 define('INSTALLER_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php');
 define('GITHUB_BASE_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/');
+
 // Run system checks (executed directly, no AJAX)
 $system_checks = [
     'php_version' => checkPHPVersion(),
@@ -17,12 +21,14 @@ $system_checks = [
     'directory_permissions' => checkDirectoryPermissions(),
     'connectivity' => checkConnectivity()
 ];
+
 // Calculate overall qualification status
 $system_qualified =
     $system_checks['php_version']['status'] &&
     $system_checks['extensions']['critical_passed'] &&
     $system_checks['directory_permissions']['status'] &&
     $system_checks['connectivity']['status'];
+
 /**
  * CHECKING FUNCTIONS - Reliable, simple checks
  */
@@ -243,6 +249,12 @@ deployPhpInfo();
             max-height: 40px;
             margin-bottom: 1rem;
         }
+        .header-version {
+            font-size: 0.95rem;
+            color: #dbeafe;
+            margin-top: 0.5rem;
+            letter-spacing: 0.03em;
+        }
         .container {
             max-width: 800px;
             margin: 0 auto;
@@ -377,12 +389,25 @@ deployPhpInfo();
             border: 1px solid #fecaca;
             color: #b91c1c;
         }
+        .debug-info {
+            background: #f3f4f6;
+            border-radius: 6px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.97rem;
+        }
+        .debug-info h3 {
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <img src="https://glowhost.com/wp-content/uploads/logo-sans-tagline.png" alt="GlowHost">
         <h1>Contact Form System - Environment Check</h1>
+        <div class="header-version">
+            Version <?php echo APP_VERSION; ?>
+        </div>
         <p>Verifying your server compatibility</p>
     </div>
     <div class="container">
@@ -559,6 +584,34 @@ deployPhpInfo();
                 <?php else: ?>
                     <button onclick="location.reload()" class="button">Refresh Checks</button>
                 <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Technical Diagnostics -->
+        <div class="card">
+            <h2>Technical Diagnostics</h2>
+            <div class="debug-info">
+                <h3>System Information</h3>
+                <p><strong>Detect Script Version:</strong> <?php echo APP_VERSION; ?></p>
+                <p><strong>PHP Version:</strong> <?php echo htmlspecialchars(PHP_VERSION); ?></p>
+                <p><strong>Server Software:</strong> <?php echo htmlspecialchars($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'); ?></p>
+                <p><strong>Connectivity Method:</strong> <?php echo htmlspecialchars($system_checks['connectivity']['method'] ?? 'None'); ?></p>
+                <p><strong>Connectivity Status:</strong> <?php echo htmlspecialchars($system_checks['connectivity']['message'] ?? 'Unknown'); ?></p>
+                <p><strong>Available Download Methods:</strong>
+                    <?php
+                    $methods = [];
+                    if (function_exists('curl_init')) $methods[] = 'cURL';
+                    if (ini_get('allow_url_fopen')) $methods[] = 'file_get_contents';
+                    echo !empty($methods) ? htmlspecialchars(implode(', ', $methods)) : 'None detected';
+                    ?>
+                </p>
+            </div>
+
+            <h3>Alternative Installation Methods</h3>
+            <p>If automatic downloads aren't working, use these terminal commands:</p>
+            <div class="command-box">
+                # Download the installer directly<br>
+                wget <?php echo htmlspecialchars(INSTALLER_URL); ?> -O install.php
             </div>
         </div>
 
