@@ -2,6 +2,30 @@
 /**
  * GlowHost Contact Form - System Requirements Check
  * Version: 1.5 - Enhanced Security with Mandatory Cleanup
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🚨 CRITICAL: SYSTEM FLOW DOCUMENTATION - READ THIS FIRST 🚨
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * THIS FILE IS THE ENTRY POINT - NOT installer.php!
+ *
+ * CORRECT USER FLOW:
+ * 1. User downloads THIS FILE (detect.php) via wget
+ * 2. User visits detect.php in their browser
+ * 3. detect.php checks system requirements
+ * 4. detect.php offers installer download options
+ * 5. detect.php downloads installer.php automatically
+ * 6. User then runs installer.php for the setup wizard
+ * 7. installer.php has automatic database creation (v3.1.1+)
+ * 8. Installation completes → security cleanup → admin access
+ *
+ * DEPLOYMENT COMMANDS:
+ * wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/master/detect.php -O detect.php
+ *
+ * DO NOT BYPASS THIS FILE - It's the qualification gateway by design!
+ *
+ * NEVER tell users to wget installer.php directly - always start here!
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 // Prevent timeouts during checks

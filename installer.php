@@ -5,6 +5,32 @@
  *
  * Professional installation wizard for creating database-driven contact form system
  * with admin interface, user management, and AUTOMATIC database setup.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🚨 CRITICAL: THIS IS STEP 2 OF THE INSTALLATION FLOW 🚨
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * THIS FILE SHOULD NOT BE THE STARTING POINT!
+ *
+ * CORRECT FLOW:
+ * 1. User starts with detect.php (the entry point)
+ * 2. detect.php qualifies the system and downloads THIS file
+ * 3. THIS FILE runs the 5-step installation wizard:
+ *    - Step 1: Environment Check
+ *    - Step 2: DATABASE SETUP (AUTOMATIC - like WordPress!)
+ *    - Step 3: Admin Account Creation
+ *    - Step 4: System Installation
+ *    - Step 5: Completion → Security Cleanup
+ *
+ * KEY FEATURE: AUTOMATIC DATABASE CREATION
+ * - Detects MySQL permissions automatically
+ * - Creates databases when possible (like WordPress/Drupal)
+ * - Smart database naming with conflict resolution
+ * - Graceful fallback to manual when needed
+ * - Real-time progress feedback
+ *
+ * IF USER BYPASSED detect.php: They missed system qualification!
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 // Configuration
