@@ -1,14 +1,14 @@
 <?php
 /**
  * GlowHost Contact Form - System Requirements Check
- * Version: 1.2 - Enhanced with Version Display
+ * Version: 1.3 - Enhanced Debugging and 404 Fix
  */
 
 // Prevent timeouts during checks
 set_time_limit(60);
 
 // Configuration
-define('APP_VERSION', '1.2');
+define('APP_VERSION', '1.3');
 define('MIN_PHP_VERSION', '7.4.0');
 define('RECOMMENDED_PHP_VERSION', '8.1.0');
 define('INSTALLER_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php');
@@ -96,48 +96,97 @@ function checkDirectoryPermissions() {
     ];
 }
 function checkConnectivity() {
-    $test_url = GITHUB_BASE_URL . 'README.md';
+    $test_url = GITHUB_BASE_URL . 'detect.php'; // Test the same file we're running
     $success = false;
     $method = '';
     $message = '';
+    $debug_info = '';
+    $user_guidance = '';
+
     // Try cURL first
     if (function_exists('curl_init')) {
         $ch = curl_init($test_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Added for some hosts with SSL issues
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Follow redirects
+        curl_setopt($ch, CURLOPT_USERAGENT, 'GlowHost-Installer/1.0'); // Set a user agent
+
         $result = curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        $effective_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+
+        $debug_info = "Test URL: $test_url | Final URL: $effective_url | HTTP Status: $status";
+        if (!empty($error)) {
+            $debug_info .= " | cURL Error: $error";
+        }
+
         curl_close($ch);
+
         if ($result !== false && $status == 200) {
             $success = true;
             $method = 'cURL';
             $message = "GitHub connectivity successful";
+            $user_guidance = "✅ Your server can successfully download files from GitHub.";
         } else {
-            $message = "cURL connection failed with status: $status";
+            $method = 'cURL (failed)';
+            if ($status == 404) {
+                $message = "GitHub file not found (404 error)";
+                $user_guidance = "❌ The file detect.php was not found in the GitHub repository. This could mean:\n• The repository is private or doesn't exist\n• The file hasn't been uploaded to GitHub yet\n• There's a network/DNS issue reaching GitHub\n\n🔧 Solution: Use the manual download method below instead.";
+            } elseif ($status >= 500) {
+                $message = "GitHub server error ($status)";
+                $user_guidance = "❌ GitHub is experiencing server issues. Try again in a few minutes, or use the manual download method.";
+            } elseif ($status == 0) {
+                $message = "Network connection failed";
+                $user_guidance = "❌ Cannot reach GitHub at all. This could be:\n• Firewall blocking external connections\n• DNS resolution issues\n• Internet connectivity problems\n\n🔧 Contact your hosting provider about external connectivity.";
+            } else {
+                $message = "Connection failed with HTTP status: $status";
+                $user_guidance = "❌ Unexpected response from GitHub. Use the manual download method below.";
+            }
         }
     }
     // Try file_get_contents if cURL failed or isn't available
-    elseif (ini_get('allow_url_fopen')) {
+    elseif (!$success && ini_get('allow_url_fopen')) {
         $context = stream_context_create([
-            'http' => ['timeout' => 10],
-            'ssl' => ['verify_peer' => false, 'verify_peer_name' => false], // Added for hosts with SSL issues
+            'http' => [
+                'timeout' => 10,
+                'user_agent' => 'GlowHost-Installer/1.0',
+                'follow_location' => 1
+            ],
+            'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
         ]);
         $result = @file_get_contents($test_url, false, $context);
+
+        $debug_info = "Test URL: $test_url | Method: file_get_contents";
+
         if ($result !== false) {
             $success = true;
             $method = 'file_get_contents';
             $message = "GitHub connectivity successful";
+            $user_guidance = "✅ Your server can successfully download files from GitHub.";
         } else {
-            $message = "file_get_contents connection failed";
+            $method = 'file_get_contents (failed)';
+            $message = "File download failed";
+            $user_guidance = "❌ Cannot download files from GitHub using file_get_contents. This is likely a network connectivity issue. Use the manual download method below.";
+
+            if (isset($http_response_header)) {
+                $debug_info .= " | Response: " . implode(', ', $http_response_header);
+            }
         }
     } else {
-        $message = "No download method available (requires cURL or allow_url_fopen)";
+        $message = "No download method available";
+        $user_guidance = "❌ Your server has no method to download files automatically. Both cURL and allow_url_fopen are disabled. Use the manual download method below.";
+        $debug_info = "cURL: " . (function_exists('curl_init') ? 'Available' : 'Not available') .
+            " | allow_url_fopen: " . (ini_get('allow_url_fopen') ? 'Enabled' : 'Disabled');
     }
+
     return [
         'status' => $success,
         'method' => $method,
-        'message' => $message
+        'message' => $message,
+        'debug_info' => $debug_info,
+        'user_guidance' => $user_guidance
     ];
 }
 /**
@@ -399,6 +448,16 @@ deployPhpInfo();
         .debug-info h3 {
             margin-top: 0;
         }
+        .debug-block {
+            background: #e5e7eb;
+            color: #1e293b;
+            border-radius: 4px;
+            padding: 0.5em 1em;
+            font-size: 0.95em;
+            margin: 0.5em 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
@@ -567,6 +626,12 @@ deployPhpInfo();
                         <?php else: ?>
                             <p><strong>How to fix:</strong> Check your internet connection or firewall settings. Your server needs to access GitHub to download components.</p>
                         <?php endif; ?>
+                        <?php if (!empty($system_checks['connectivity']['user_guidance'])): ?>
+                            <div class="debug-block"><?php echo nl2br(htmlspecialchars($system_checks['connectivity']['user_guidance'])); ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($system_checks['connectivity']['debug_info'])): ?>
+                            <div class="debug-block"><?php echo nl2br(htmlspecialchars($system_checks['connectivity']['debug_info'])); ?></div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -605,6 +670,9 @@ deployPhpInfo();
                     echo !empty($methods) ? htmlspecialchars(implode(', ', $methods)) : 'None detected';
                     ?>
                 </p>
+                <?php if (!empty($system_checks['connectivity']['debug_info'])): ?>
+                    <div class="debug-block"><?php echo nl2br(htmlspecialchars($system_checks['connectivity']['debug_info'])); ?></div>
+                <?php endif; ?>
             </div>
 
             <h3>Alternative Installation Methods</h3>
