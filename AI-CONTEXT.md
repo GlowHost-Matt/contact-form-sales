@@ -1,6 +1,26 @@
 # 🚨 AI CONTEXT: GLOWHOST CONTACT FORM SYSTEM
 
-## ⚡ **PRIORITY #1: READ FLOW.md FIRST!**
+## 🚨 **MANDATORY PRE-ACTION PROTOCOL - CHECK FIRST!** 🚨
+
+### **BEFORE ANY ACTION - SYSTEMATIC CHECK:**
+```
+□ Does message start with "q:" or "Q:"?
+  ├─ YES → ANALYSIS ONLY MODE
+  │   ├─ Respond: "This is analysis-only per q: protocol"
+  │   ├─ NO file edits, commits, or actions
+  │   └─ Provide analysis and recommendations only
+  └─ NO → Normal workflow (proceed with actions)
+```
+
+### **🚨 Q: PROTOCOL VIOLATION = CRITICAL ERROR**
+- **Any action taken after "q:" prefix = PROTOCOL BREACH**
+- **Must acknowledge violation and offer to revert changes**
+- **Cost**: 10-30 minutes recovery time vs 5 seconds checking time
+- **ROI**: 1000%+ time savings by preventing mistakes
+
+---
+
+## ⚡ **PRIORITY #2: READ FLOW.md FIRST!**
 
 **BEFORE providing ANY guidance to users, you MUST read and understand FLOW.md**
 
@@ -47,9 +67,15 @@ This is a professional contact form system for GlowHost with:
 
 ---
 
-## 🛠️ **FOR AI ASSISTANTS**
+## 🛠️ **FOR AI ASSISTANTS - CRITICAL RULES**
 
-### **CRITICAL RULES:**
+### **PROTOCOL CHECKING (MANDATORY):**
+- ✅ **FIRST**: Check if message starts with "q:" or "Q:"
+- ✅ **IF YES**: Analysis only, no actions, respond with protocol acknowledgment
+- ✅ **IF NO**: Proceed with normal workflow
+- ❌ **NEVER SKIP** this check - costs 1000%+ more time to fix mistakes
+
+### **SYSTEM FLOW RULES:**
 - ✅ **ALWAYS start users with detect.php**
 - ✅ **READ FLOW.md before providing guidance**
 - ✅ **Respect the designed qualification → installer → cleanup flow**
@@ -70,6 +96,7 @@ This is a professional contact form system for GlowHost with:
 - ✅ **Professional UX** - modern installation experience
 - ✅ **Unified admin interface** - single entry point design
 - ✅ **Flow documentation** - embedded in code for persistence
+- ✅ **Protocol safeguards** - systematic checking procedures
 
 ---
 
@@ -80,5 +107,6 @@ Successfully transformed basic contact form into enterprise-grade system with:
 - Modern automatic database creation matching industry standards
 - Professional installer experience with real-time feedback
 - Bulletproof flow documentation embedded in code files
+- **Systematic protocol safeguards preventing costly mistakes**
 
-**🎯 Always remember: detect.php → installer.php → security cleanup**
+**🎯 Always remember: CHECK Q: PROTOCOL FIRST → detect.php → installer.php → security cleanup**

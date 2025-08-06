@@ -6,6 +6,19 @@
 
 ---
 
+## 🚨 **STEP 0: PROTOCOL CHECK (MANDATORY FIRST STEP)**
+
+### **BEFORE ANY ACTION - CHECK MESSAGE PREFIX:**
+```
+□ Does message start with "q:" or "Q:"?
+  ├─ YES → ANALYSIS ONLY (see PROTOCOL.md)
+  └─ NO → Continue with flow documentation below
+```
+
+**🚨 CRITICAL**: If you skip this check and take actions after a "q:" message, you create costly protocol violations that require 15-45 minutes to recover from.
+
+---
+
 ## 🎯 **CORRECT USER INSTALLATION FLOW**
 
 ### **Entry Point: detect.php (NOT installer.php!)**
@@ -40,12 +53,14 @@
 ## ❌ **COMMON MISTAKES TO AVOID**
 
 ### **NEVER Do These:**
+- ❌ Skip the "q:" protocol check (see PROTOCOL.md)
 - ❌ Tell users to wget installer.php directly
 - ❌ Skip detect.php qualification
 - ❌ Assume files are "live" on user's server
 - ❌ Bypass the designed entry point
 
 ### **ALWAYS Do These:**
+- ✅ Check message prefix for "q:" FIRST
 - ✅ Start with detect.php
 - ✅ Follow the qualification → installer → cleanup flow
 - ✅ Emphasize detect.php as the entry point
@@ -77,11 +92,12 @@
 
 ## 📋 **FOR AI ASSISTANTS: CRITICAL REMINDERS**
 
-1. **ENTRY POINT**: Always start users with detect.php
-2. **NO DIRECT INSTALLER**: Never suggest wget installer.php directly
-3. **FLOW INTEGRITY**: Respect the designed qualification → setup → security flow
-4. **NO ASSUMPTIONS**: Don't assume files are live on user's server
-5. **GITHUB TRUTH**: Repository is source of truth, not user's server
+1. **PROTOCOL CHECK**: Always check for "q:" prefix FIRST (see PROTOCOL.md)
+2. **ENTRY POINT**: Always start users with detect.php
+3. **NO DIRECT INSTALLER**: Never suggest wget installer.php directly
+4. **FLOW INTEGRITY**: Respect the designed qualification → setup → security flow
+5. **NO ASSUMPTIONS**: Don't assume files are live on user's server
+6. **GITHUB TRUTH**: Repository is source of truth, not user's server
 
 ---
 
@@ -109,4 +125,4 @@ wget https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/master/d
 # LET detect.php handle the rest of the flow!
 ```
 
-**🎯 Remember: detect.php is the gateway - respect the flow!**
+**🎯 Remember: CHECK Q: PROTOCOL FIRST → detect.php is the gateway → respect the flow!**
