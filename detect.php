@@ -1,14 +1,14 @@
 <?php
 /**
  * GlowHost Contact Form - System Requirements Check
- * Version: 1.4 - Clear Download Option Explanations
+ * Version: 1.5 - Enhanced Security with Mandatory Cleanup
  */
 
 // Prevent timeouts during checks
 set_time_limit(60);
 
 // Configuration
-define('APP_VERSION', '1.4');
+define('APP_VERSION', '1.5');
 define('MIN_PHP_VERSION', '7.4.0');
 define('RECOMMENDED_PHP_VERSION', '8.1.0');
 define('INSTALLER_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php');
