@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($cleanup_verified) {
             $cleanup_result['success'] = true;
-            $cleanup_result['message'] = 'All security files successfully removed! Redirecting to admin login...';
+            $cleanup_result['message'] = 'All security files successfully removed! Redirecting to admin interface...';
         } else {
             $cleanup_result['message'] = 'Some files could not be automatically deleted. Please remove manually.';
         }
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Manual verification requested
         if ($cleanup_verified) {
             $cleanup_result['success'] = true;
-            $cleanup_result['message'] = 'Cleanup verified! Redirecting to admin login...';
+            $cleanup_result['message'] = 'Cleanup verified! Redirecting to admin interface...';
         } else {
             $cleanup_result['message'] = 'Files still exist. Please remove them before proceeding.';
         }
@@ -79,7 +79,7 @@ if ($cleanup_verified) {
 
     // JavaScript redirect after showing success message
     if ($cleanup_result['success']) {
-        header('refresh:3;url=admin/login.php');
+        header('refresh:3;url=admin/');
     }
 }
 
@@ -305,10 +305,10 @@ $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                 <div class="alert alert-success">
                     <h2>✅ Security Cleanup Complete!</h2>
                     <p>All installation files have been successfully removed. Admin access is now enabled.</p>
-                    <p>Redirecting to admin login in 3 seconds...</p>
+                    <p>Redirecting to admin interface in 3 seconds...</p>
                 </div>
                 <div class="text-center">
-                    <a href="admin/login.php" class="button button-success">Access Admin Panel</a>
+                    <a href="admin/" class="button button-success">Access Admin Panel</a>
                 </div>
             </div>
         <?php else: ?>
@@ -415,7 +415,7 @@ rm detect.php install.php phpinfo.php
     <script>
         // Auto-redirect after success
         setTimeout(function() {
-            window.location.href = 'admin/login.php';
+            window.location.href = 'admin/';
         }, 3000);
     </script>
     <?php endif; ?>
