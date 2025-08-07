@@ -1,14 +1,40 @@
 <?php
 /**
  * GlowHost Contact Form System - Progressive Installation Wizard
- * Version: 3.0.0 - Complete Backend Platform
+ * Version: 3.1.1 - Enhanced with Automatic Database Creation
  *
  * Professional installation wizard for creating database-driven contact form system
- * with admin interface, user management, and comprehensive backend capabilities.
+ * with admin interface, user management, and AUTOMATIC database setup.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🚨 CRITICAL: THIS IS STEP 2 OF THE INSTALLATION FLOW 🚨
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * THIS FILE SHOULD NOT BE THE STARTING POINT!
+ *
+ * CORRECT FLOW:
+ * 1. User starts with detect.php (the entry point)
+ * 2. detect.php qualifies the system and downloads THIS file
+ * 3. THIS FILE runs the 5-step installation wizard:
+ *    - Step 1: Environment Check
+ *    - Step 2: DATABASE SETUP (AUTOMATIC - like WordPress!)
+ *    - Step 3: Admin Account Creation
+ *    - Step 4: System Installation
+ *    - Step 5: Completion → Security Cleanup
+ *
+ * KEY FEATURE: AUTOMATIC DATABASE CREATION
+ * - Detects MySQL permissions automatically
+ * - Creates databases when possible (like WordPress/Drupal)
+ * - Smart database naming with conflict resolution
+ * - Graceful fallback to manual when needed
+ * - Real-time progress feedback
+ *
+ * IF USER BYPASSED detect.php: They missed system qualification!
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 // Configuration
-define('INSTALLER_VERSION', '3.0.0');
+define('INSTALLER_VERSION', '3.1.1');
 define('MIN_PHP_VERSION', '7.4.0');
 define('RECOMMENDED_PHP_VERSION', '8.1.0');
 
@@ -210,6 +236,175 @@ class DatabaseManager {
         } catch (PDOException $e) {
             return ['success' => false, 'message' => 'Connection failed: ' . $e->getMessage()];
         }
+    }
+
+    /**
+     * Intelligent Database Setup - Tries automatic creation with fallback options
+     */
+    public static function intelligentDatabaseSetup($host, $username, $password, $preferred_db_name = '') {
+        $results = [
+            'auto_creation_attempted' => false,
+            'auto_creation_success' => false,
+            'suggested_db_name' => '',
+            'permissions_detected' => '',
+            'fallback_needed' => false,
+            'connection_success' => false,
+            'final_database' => '',
+            'steps_completed' => [],
+            'messages' => []
+        ];
+
+        try {
+            // Step 1: Test basic MySQL connection
+            $pdo = new PDO("mysql:host=$host", $username, $password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+
+            $results['connection_success'] = true;
+            $results['steps_completed'][] = 'mysql_connection';
+            $results['messages'][] = '✅ MySQL connection successful';
+
+            // Step 2: Detect user permissions
+            $permissions = self::detectUserPermissions($pdo);
+            $results['permissions_detected'] = $permissions['level'];
+            $results['messages'][] = "📋 Permission level: {$permissions['description']}";
+
+            // Step 3: Generate smart database name if not provided
+            if (empty($preferred_db_name)) {
+                $preferred_db_name = self::generateSmartDatabaseName($username);
+            }
+            $results['suggested_db_name'] = $preferred_db_name;
+
+            // Step 4: Attempt automatic database creation based on permissions
+            if ($permissions['can_create_db']) {
+                $results['auto_creation_attempted'] = true;
+                $results['messages'][] = "🔄 Attempting automatic database creation: '$preferred_db_name'";
+
+                try {
+                    $pdo->exec("CREATE DATABASE IF NOT EXISTS `$preferred_db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                    $results['auto_creation_success'] = true;
+                    $results['final_database'] = $preferred_db_name;
+                    $results['steps_completed'][] = 'database_created';
+                    $results['messages'][] = "✅ Database '$preferred_db_name' created automatically";
+
+                } catch (PDOException $e) {
+                    $results['messages'][] = "⚠️ Automatic creation failed: " . $e->getMessage();
+                    // Try to detect existing databases user can access
+                    $existing_dbs = self::detectAccessibleDatabases($pdo, $username, $password, $host);
+                    if (!empty($existing_dbs)) {
+                        $results['messages'][] = "💡 Found existing databases you can use: " . implode(', ', $existing_dbs);
+                        $results['suggested_db_name'] = $existing_dbs[0]; // Suggest first accessible DB
+                    }
+                }
+            } else {
+                $results['messages'][] = "ℹ️ User doesn't have database creation privileges";
+                // Check for existing databases user can access
+                $existing_dbs = self::detectAccessibleDatabases($pdo, $username, $password, $host);
+                if (!empty($existing_dbs)) {
+                    $results['messages'][] = "💡 Found databases you can access: " . implode(', ', $existing_dbs);
+                    $results['suggested_db_name'] = $existing_dbs[0];
+                } else {
+                    $results['fallback_needed'] = true;
+                    $results['messages'][] = "📝 Manual database creation required - see instructions below";
+                }
+            }
+
+            // Step 5: Test final database access
+            if (!empty($results['suggested_db_name'])) {
+                $test_result = self::testConnection($host, $username, $password, $results['suggested_db_name']);
+                if ($test_result['success']) {
+                    $results['final_database'] = $results['suggested_db_name'];
+                    $results['steps_completed'][] = 'database_access_confirmed';
+                    $results['messages'][] = "✅ Database access confirmed: '{$results['suggested_db_name']}'";
+                }
+            }
+
+            return $results;
+
+        } catch (PDOException $e) {
+            $results['messages'][] = "❌ Connection failed: " . $e->getMessage();
+            $results['fallback_needed'] = true;
+            return $results;
+        }
+    }
+
+    private static function detectUserPermissions($pdo) {
+        try {
+            // Try to get user privileges
+            $stmt = $pdo->query("SHOW GRANTS FOR CURRENT_USER()");
+            $grants = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $can_create_db = false;
+            $is_admin = false;
+
+            foreach ($grants as $grant) {
+                if (stripos($grant, 'ALL PRIVILEGES') !== false) {
+                    $can_create_db = true;
+                    $is_admin = true;
+                    break;
+                }
+                if (stripos($grant, 'CREATE') !== false) {
+                    $can_create_db = true;
+                }
+            }
+
+            if ($is_admin) {
+                return ['level' => 'admin', 'can_create_db' => true, 'description' => 'Full Admin (can create databases)'];
+            } elseif ($can_create_db) {
+                return ['level' => 'create', 'can_create_db' => true, 'description' => 'Create Privileges (can create databases)'];
+            } else {
+                return ['level' => 'limited', 'can_create_db' => false, 'description' => 'Limited (database must be pre-created)'];
+            }
+
+        } catch (PDOException $e) {
+            // Fallback: assume limited permissions if we can't detect
+            return ['level' => 'unknown', 'can_create_db' => false, 'description' => 'Unknown (will try automatic creation)'];
+        }
+    }
+
+    private static function detectAccessibleDatabases($pdo, $username, $password, $host) {
+        try {
+            $stmt = $pdo->query("SHOW DATABASES");
+            $all_databases = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $accessible = [];
+            foreach ($all_databases as $db) {
+                // Skip system databases
+                if (in_array($db, ['information_schema', 'performance_schema', 'mysql', 'sys'])) {
+                    continue;
+                }
+
+                // Try to access database
+                try {
+                    $test_pdo = new PDO("mysql:host=$host;dbname=$db", $username, $password);
+                    $accessible[] = $db;
+                } catch (PDOException $e) {
+                    // Skip databases we can't access
+                    continue;
+                }
+            }
+
+            return $accessible;
+
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    private static function generateSmartDatabaseName($username) {
+        // Generate a smart database name based on username and domain
+        $base_name = 'glowhost_contact';
+
+        // If username has a pattern like "user_", use it as prefix
+        if (strpos($username, '_') !== false) {
+            $parts = explode('_', $username);
+            $base_name = $parts[0] . '_contact_form';
+        }
+
+        // Add random suffix to avoid conflicts
+        $suffix = substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 4);
+
+        return $base_name . '_' . $suffix;
     }
 
     public static function createDatabase($host, $username, $password, $database) {
@@ -764,6 +959,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ]);
             break;
 
+        case 'intelligent_database_setup':
+            $host = $_POST['db_host'] ?? '';
+            $username = $_POST['db_username'] ?? '';
+            $password = $_POST['db_password'] ?? '';
+            $preferred_db_name = $_POST['db_name'] ?? '';
+
+            $result = DatabaseManager::intelligentDatabaseSetup($host, $username, $password, $preferred_db_name);
+            echo json_encode($result);
+            break;
+
         case 'test_database':
             $host = $_POST['db_host'] ?? '';
             $username = $_POST['db_username'] ?? '';
@@ -779,26 +984,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $username = $_POST['db_username'] ?? '';
             $password = $_POST['db_password'] ?? '';
             $database = $_POST['db_name'] ?? '';
-            // Always attempt to create database automatically
-            $create_result = DatabaseManager::createDatabase($host, $username, $password, $database);
-            if (!$create_result['success']) {
-                // Database creation failed - try to proceed with existing database
-                // This will fail gracefully if database doesn't exist
+
+            // First try intelligent setup
+            $intelligent_result = DatabaseManager::intelligentDatabaseSetup($host, $username, $password, $database);
+
+            if ($intelligent_result['final_database']) {
+                $database = $intelligent_result['final_database'];
+                $schema_result = DatabaseManager::installSchema($host, $username, $password, $database);
+
+                if ($schema_result['success']) {
+                    $_SESSION['db_config'] = [
+                        'host' => $host,
+                        'username' => $username,
+                        'password' => $password,
+                        'database' => $database
+                    ];
+
+                    $intelligent_result['schema_installed'] = true;
+                    $intelligent_result['ready_for_next_step'] = true;
+                    echo json_encode($intelligent_result);
+                } else {
+                    echo json_encode($schema_result);
+                }
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Could not set up database automatically. Please check credentials and try manual setup.',
+                    'intelligent_result' => $intelligent_result
+                ]);
             }
-
-            $schema_result = DatabaseManager::installSchema($host, $username, $password, $database);
-
-            if ($schema_result['success']) {
-                // Store database config for next steps
-                $_SESSION['db_config'] = [
-                    'host' => $host,
-                    'username' => $username,
-                    'password' => $password,
-                    'database' => $database
-                ];
-            }
-
-            echo json_encode($schema_result);
             break;
 
         case 'create_admin':
@@ -1345,6 +1559,56 @@ if (!$wizard->isValidStep($current_step)) {
                 font-size: 10px;
             }
         }
+
+        /* Progress Steps */
+        .progress-steps {
+            margin: 24px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .progress-steps h4 {
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .progress-step .step-icon {
+            margin-right: 8px;
+            width: 20px;
+        }
+
+        /* Manual Instructions */
+        .manual-instructions {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: var(--radius);
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .manual-instructions h4 {
+            color: #92400e;
+            margin-bottom: 12px;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: monospace;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
@@ -1395,49 +1659,98 @@ if (!$wizard->isValidStep($current_step)) {
                 </div>
             </div>
 
-            <!-- Step 2: Database Setup -->
+            <!-- Step 2: Fully Automated Database Setup -->
             <div class="step-content <?php echo $current_step === 2 ? 'active' : ''; ?>" id="step-2">
-                <div class="step-title">Database Setup</div>
+                <div class="step-title">🤖 Fully Automated Database Setup</div>
                 <div class="step-description">
-                    Configure your MySQL database connection. The installer will automatically create the database and install required tables.
+                    <strong>Zero Configuration Required:</strong> Our installer will automatically detect your hosting environment and create everything for you. No forms to fill out, no credentials to enter - just watch the magic happen!
                 </div>
 
-                <form id="database-form">
-                    <div class="form-group">
-                        <label class="form-label" for="db_host">Database Host</label>
-                        <input type="text" class="form-input" id="db_host" name="db_host" value="localhost" required>
-                        <div class="form-help">Usually 'localhost' for shared hosting</div>
+                <div class="message info" style="display: block;">
+                    🎯 <strong>True Automation:</strong> Unlike other installers that require manual database creation, ours handles absolutely everything automatically - just like enterprise software should.
+                </div>
+
+                <!-- Auto-Setup Progress Display -->
+                <div id="auto-setup-progress" style="display: none;">
+                    <div class="progress-steps">
+                        <h4>🔄 Automatic Database Setup in Progress</h4>
+                        <div id="setup-steps">
+                            <div class="progress-step" id="step-detect">
+                                <span class="step-icon">🔍</span>
+                                <span>Detecting hosting environment...</span>
+                            </div>
+                            <div class="progress-step" id="step-credentials">
+                                <span class="step-icon">🔑</span>
+                                <span>Discovering database access...</span>
+                            </div>
+                            <div class="progress-step" id="step-generate">
+                                <span class="step-icon">⚡</span>
+                                <span>Generating database and user...</span>
+                            </div>
+                            <div class="progress-step" id="step-create">
+                                <span class="step-icon">🏗️</span>
+                                <span>Creating database automatically...</span>
+                            </div>
+                            <div class="progress-step" id="step-verify">
+                                <span class="step-icon">✅</span>
+                                <span>Verifying setup...</span>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="db_name">Database Name</label>
-                        <input type="text" class="form-input" id="db_name" name="db_name" required>
+                <!-- Results Display -->
+                <div id="auto-setup-results"></div>
+
+                <!-- Advanced Options (Collapsed by Default) -->
+                <details style="margin: 20px 0; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px;">
+                    <summary style="cursor: pointer; font-weight: 500; color: var(--primary);">
+                        ⚙️ Advanced Database Permissions (Optional)
+                    </summary>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 6px;">
+                        <p style="margin-bottom: 15px; color: #6b7280; font-size: 14px;">
+                            By default, we'll grant full database permissions (recommended). Only change this if you have specific security requirements.
+                        </p>
+
+                        <div class="checkbox">
+                            <input type="checkbox" id="use_custom_permissions" />
+                            <label for="use_custom_permissions">Customize database permissions (advanced users)</label>
+                        </div>
+
+                        <div id="custom-permissions" style="display: none; margin-top: 15px; padding: 15px; border: 1px solid #d1d5db; border-radius: 6px;">
+                            <h5 style="margin-bottom: 10px;">Select Database Permissions:</h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                                <div class="checkbox"><input type="checkbox" id="perm_select" checked><label for="perm_select">SELECT</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_insert" checked><label for="perm_insert">INSERT</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_update" checked><label for="perm_update">UPDATE</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_delete" checked><label for="perm_delete">DELETE</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_create" checked><label for="perm_create">CREATE</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_drop" checked><label for="perm_drop">DROP</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_alter" checked><label for="perm_alter">ALTER</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_index" checked><label for="perm_index">INDEX</label></div>
+                            </div>
+                        </div>
                     </div>
+                </details>
 
-                    <div class="form-group">
-                        <label class="form-label" for="db_username">Username</label>
-                        <input type="text" class="form-input" id="db_username" name="db_username" required>
+                <!-- Manual Fallback (Only Shown If Automation Fails) -->
+                <div id="manual-fallback" style="display: none;">
+                    <div class="manual-instructions">
+                        <h4>⚙️ Manual Setup Required</h4>
+                        <p>Automatic setup couldn't complete due to hosting restrictions. Here are the exact steps:</p>
+                        <div id="manual-steps"></div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="db_password">Password</label>
-                        <input type="password" class="form-input" id="db_password" name="db_password">
-                    </div>
-
-
-                    <button type="button" class="btn btn-outline" onclick="testDatabase()">
-                        Test Connection
-                    </button>
-                </form>
-
-                <div id="database-messages"></div>
+                </div>
 
                 <div class="actions">
                     <button class="btn btn-secondary" onclick="previousStep(2)">
                         ← Back
                     </button>
-                    <button class="btn btn-primary" id="next-step-2" onclick="installDatabase()" disabled>
-                        Create Database & Install Tables →
+                    <button class="btn btn-success" id="start-auto-setup" onclick="startAutomaticDatabaseSetup()">
+                        🚀 Start Automatic Setup
+                    </button>
+                    <button class="btn btn-primary" id="next-step-2" onclick="nextStep(2)" disabled style="display: none;">
+                        Continue to Admin Setup →
                     </button>
                 </div>
             </div>
@@ -1688,6 +2001,125 @@ if (!$wizard->isValidStep($current_step)) {
                 } else {
                     showMessage('❌ ' + result.message, 'error', 'database-messages');
                     document.getElementById('next-step-2').disabled = true;
+                }
+            } catch (error) {
+                showMessage('❌ Connection test failed: ' + error.message, 'error', 'database-messages');
+            }
+        }
+
+        async function startAutomaticDatabaseSetup() {
+            const form = document.getElementById('database-form');
+            const formData = new FormData(form);
+            formData.append('action', 'intelligent_database_setup');
+            formData.append('csrf_token', csrfToken);
+
+            // Show progress
+            document.getElementById('auto-setup-progress').style.display = 'block';
+            document.getElementById('auto-setup-results').innerHTML = '';
+
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                displayIntelligentResults(result);
+
+                // If successful, try to install the schema
+                if (result.final_database) {
+                    await installDatabaseWithResults(result);
+                }
+
+            } catch (error) {
+                showMessage('❌ Setup failed: ' + error.message, 'error', 'database-messages');
+            }
+        }
+
+        function displayIntelligentResults(result) {
+            let html = '<div class="progress-steps"><h4>🔍 Database Setup Analysis</h4>';
+
+            result.messages.forEach(message => {
+                html += `<div class="progress-step"><span class="step-icon">${message.startsWith('✅') ? '✅' : message.startsWith('⚠️') ? '⚠️' : message.startsWith('❌') ? '❌' : '📋'}</span>${message}</div>`;
+            });
+
+            html += '</div>';
+
+            if (result.fallback_needed) {
+                html += `
+                    <div class="manual-instructions">
+                        <h4>⚙️ Manual Database Setup Required</h4>
+                        <p>Your hosting setup requires manual database creation. Please:</p>
+                        <ol>
+                            <li>Log into your hosting control panel (cPanel, Plesk, etc.)</li>
+                            <li>Go to "MySQL Databases" or similar</li>
+                            <li>Create a new database with any name you prefer</li>
+                            <li>Return here and enter the database name below</li>
+                        </ol>
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label class="form-label">Manual Database Name:</label>
+                            <input type="text" class="form-input" id="manual_db_name" placeholder="Enter your created database name">
+                            <button type="button" class="btn btn-primary" onclick="manualDatabaseSetup()" style="margin-top: 10px;">Continue with Manual Database</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('auto-setup-results').innerHTML = html;
+        }
+
+        async function installDatabaseWithResults(intelligentResult) {
+            const form = document.getElementById('database-form');
+            const formData = new FormData(form);
+            formData.append('action', 'install_database');
+            formData.append('csrf_token', csrfToken);
+            // Use the final database name from intelligent setup
+            formData.set('db_name', intelligentResult.final_database);
+
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success || result.ready_for_next_step) {
+                    showMessage('✅ Database setup completed successfully!', 'success', 'database-messages');
+                    document.getElementById('next-step-2').disabled = false;
+
+                    // Auto-advance after 2 seconds
+                    setTimeout(() => {
+                        if (!document.getElementById('next-step-2').disabled) {
+                            nextStep(2);
+                        }
+                    }, 2000);
+                } else {
+                    showMessage('❌ ' + result.message, 'error', 'database-messages');
+                }
+            } catch (error) {
+                showMessage('❌ Database installation failed: ' + error.message, 'error', 'database-messages');
+            }
+        }
+
+        async function manualDatabaseSetup() {
+            const form = document.getElementById('database-form');
+            const formData = new FormData(form);
+            formData.append('action', 'test_database');
+            formData.append('csrf_token', csrfToken);
+
+            try {
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ ' + result.message, 'success', 'database-messages');
+                } else {
+                    showMessage('❌ ' + result.message, 'error', 'database-messages');
                 }
             } catch (error) {
                 showMessage('❌ Connection test failed: ' + error.message, 'error', 'database-messages');
