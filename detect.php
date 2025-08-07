@@ -463,28 +463,82 @@ deployPhpInfo();
 <body>
     <div class="header">
         <img src="https://glowhost.com/wp-content/uploads/logo-sans-tagline.png" alt="GlowHost">
-        <h1>Contact Form System - Environment Check</h1>
-        <div class="header-version">
-            Version <?php echo APP_VERSION; ?>
-        </div>
-        <p>Verifying your server compatibility</p>
+        <?php if (isset($_GET['download']) && $_GET['download'] === 'installer'): ?>
+            <h1>Contact Form System - Ready to Install</h1>
+            <div class="header-version">
+                Version <?php echo APP_VERSION; ?>
+            </div>
+            <p>Installation wizard downloaded successfully</p>
+        <?php else: ?>
+            <h1>Contact Form System - Environment Check</h1>
+            <div class="header-version">
+                Version <?php echo APP_VERSION; ?>
+            </div>
+            <p>Verifying your server compatibility</p>
+        <?php endif; ?>
     </div>
     <div class="container">
         <?php if (isset($_GET['download']) && $_GET['download'] === 'installer'): ?>
-            <!-- Download Result Message -->
+            <!-- Streamlined Download Success Page -->
             <div class="card">
-                <div class="alert <?php echo $download_result['success'] ? 'alert-success' : 'alert-error'; ?>">
-                    <?php echo $download_result['message']; ?>
-                </div>
-                <div class="action-container">
-                    <?php if ($download_result['success']): ?>
-                        <a href="install.php" class="button button-success">Run Installer</a>
-                    <?php else: ?>
-                        <a href="?" class="button">Back to System Check</a>
-                    <?php endif; ?>
-                </div>
+                <?php if ($download_result['success']): ?>
+                    <div class="status-box status-success">
+                        <div class="status-icon">✅</div>
+                        <div>
+                            <h2>Installer Downloaded Successfully!</h2>
+                            <p>The installation wizard is ready to run on your server.</p>
+                        </div>
+                    </div>
+
+                    <div style="margin: 20px 0; padding: 15px; background: #f3f4f6; border-radius: 6px;">
+                        <p><strong>📁 File:</strong> install.php</p>
+                        <p><strong>🕐 Downloaded:</strong> <?php echo date('Y-m-d H:i:s'); ?></p>
+                        <p><strong>📍 Location:</strong> <?php echo __DIR__; ?>/install.php</p>
+                    </div>
+
+                    <div class="action-container">
+                        <a href="install.php" class="button button-success" style="font-size: 16px; padding: 12px 24px;">
+                            🚀 Run Installer
+                        </a>
+                        <a href="?" class="button" style="margin-left: 10px;">
+                            ← Back to System Check
+                        </a>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #eff6ff; border-radius: 6px; border-left: 4px solid #2563eb;">
+                        <p><strong>💡 Next Steps:</strong></p>
+                        <ol style="margin: 0; padding-left: 20px;">
+                            <li>Click "Run Installer" above</li>
+                            <li>Follow the 5-step installation wizard</li>
+                            <li>Create your admin account</li>
+                            <li>Start using your contact form!</li>
+                        </ol>
+                    </div>
+
+                <?php else: ?>
+                    <div class="status-box status-error">
+                        <div class="status-icon">❌</div>
+                        <div>
+                            <h2>Download Failed</h2>
+                            <p>There was an issue downloading the installer.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-error">
+                        <?php echo $download_result['message']; ?>
+                    </div>
+
+                    <div class="action-container">
+                        <a href="?" class="button">← Back to System Check</a>
+                        <a href="<?php echo INSTALLER_URL; ?>" class="button" style="margin-left: 10px;" download="install.php">
+                            💾 Try Direct Download
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
+
+        <?php else: ?>
+            <!-- Full System Check (only shown when NOT downloading) -->
 
         <!-- Overall System Status -->
         <div class="card">
@@ -691,6 +745,9 @@ deployPhpInfo();
             Toll Free: <a href="tel:+18882934678">1 (888) 293-HOST</a></p>
             <p><a href="phpinfo.php" target="_blank">View Complete PHP Information</a></p>
         </div>
+
+        <?php endif; // End of system check section ?>
+
     </div>
 </body>
 </html>
