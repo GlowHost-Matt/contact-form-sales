@@ -1,14 +1,14 @@
 <?php
 /**
  * GlowHost Contact Form - System Requirements Check
- * Version: 1.5 - Enhanced Security with Mandatory Cleanup
+ * Version: 1.3 - Enhanced Debugging and 404 Fix
  */
 
 // Prevent timeouts during checks
 set_time_limit(60);
 
 // Configuration
-define('APP_VERSION', '1.5');
+define('APP_VERSION', '1.3');
 define('MIN_PHP_VERSION', '7.4.0');
 define('RECOMMENDED_PHP_VERSION', '8.1.0');
 define('INSTALLER_URL', 'https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/main/install.php');
@@ -245,238 +245,16 @@ function downloadFile($url, $destination) {
         'error' => $error
     ];
 }
-
-/**
- * SMART DATABASE CREDENTIAL DETECTION
- */
-function detectDatabaseCredentials() {
-    $detected = [
-        'host' => 'localhost',
-        'database' => '',
-        'username' => '',
-        'password' => '',
-        'confidence' => [],
-        'sources' => [],
-        'hosting_type' => 'unknown'
-    ];
-
-    // Method 1: Environment Variables (highest confidence)
-    if (isset($_ENV['DB_HOST']) || isset($_SERVER['DB_HOST'])) {
-        $detected['host'] = $_ENV['DB_HOST'] ?? $_SERVER['DB_HOST'];
-        $detected['confidence']['host'] = 'high';
-        $detected['sources'][] = 'Environment variables';
-    }
-
-    if (isset($_ENV['DB_NAME']) || isset($_SERVER['DB_NAME'])) {
-        $detected['database'] = $_ENV['DB_NAME'] ?? $_SERVER['DB_NAME'];
-        $detected['confidence']['database'] = 'high';
-    }
-
-    if (isset($_ENV['DB_USER']) || isset($_SERVER['DB_USER'])) {
-        $detected['username'] = $_ENV['DB_USER'] ?? $_SERVER['DB_USER'];
-        $detected['confidence']['username'] = 'high';
-    }
-
-    if (isset($_ENV['DB_PASSWORD']) || isset($_SERVER['DB_PASSWORD'])) {
-        $detected['password'] = $_ENV['DB_PASSWORD'] ?? $_SERVER['DB_PASSWORD'];
-        $detected['confidence']['password'] = 'high';
-    }
-
-    // Method 2: Hosting Pattern Recognition
-    $current_dir = basename(__DIR__);
-    $domain_parts = explode('.', $_SERVER['HTTP_HOST'] ?? '');
-    $domain_name = isset($domain_parts[0]) ? $domain_parts[0] : '';
-
-    // Detect hosting type
-    if (isset($_SERVER['cPanel']) || file_exists('/usr/local/cpanel')) {
-        $detected['hosting_type'] = 'cpanel';
-        $detected['sources'][] = 'cPanel detected';
-    } elseif (isset($_SERVER['PLESK_HOME'])) {
-        $detected['hosting_type'] = 'plesk';
-        $detected['sources'][] = 'Plesk detected';
-    }
-
-    // cPanel pattern recognition
-    if ($detected['hosting_type'] === 'cpanel' || empty($detected['username'])) {
-        // Try common cPanel patterns
-        $possible_username = $domain_name; // Common: domain name without TLD
-        if (empty($detected['username'])) {
-            $detected['username'] = $possible_username;
-            $detected['confidence']['username'] = 'medium';
-            $detected['sources'][] = 'cPanel username pattern';
-        }
-
-        if (empty($detected['database'])) {
-            $detected['database'] = $possible_username . '_glowhost';
-            $detected['confidence']['database'] = 'medium';
-            $detected['sources'][] = 'cPanel database pattern';
-        }
-    }
-
-    // Method 3: Scan for existing configuration files (safe scan)
-    $config_files = [
-        'wp-config.php',
-        '.env',
-        'config.php',
-        'database.php'
-    ];
-
-    foreach ($config_files as $config_file) {
-        if (file_exists($config_file) && is_readable($config_file)) {
-            $content = @file_get_contents($config_file);
-            if ($content !== false) {
-                // WordPress wp-config.php
-                if ($config_file === 'wp-config.php') {
-                    if (preg_match('/DB_HOST[\'\"]\s*,\s*[\'\"](.*?)[\'\"]/', $content, $matches)) {
-                        if (empty($detected['host']) || $detected['confidence']['host'] !== 'high') {
-                            $detected['host'] = $matches[1];
-                            $detected['confidence']['host'] = 'medium';
-                            $detected['sources'][] = 'WordPress config';
-                        }
-                    }
-                    if (preg_match('/DB_NAME[\'\"]\s*,\s*[\'\"](.*?)[\'\"]/', $content, $matches)) {
-                        if (empty($detected['database']) || $detected['confidence']['database'] !== 'high') {
-                            $detected['database'] = $matches[1];
-                            $detected['confidence']['database'] = 'medium';
-                        }
-                    }
-                    if (preg_match('/DB_USER[\'\"]\s*,\s*[\'\"](.*?)[\'\"]/', $content, $matches)) {
-                        if (empty($detected['username']) || $detected['confidence']['username'] !== 'high') {
-                            $detected['username'] = $matches[1];
-                            $detected['confidence']['username'] = 'medium';
-                        }
-                    }
-                }
-
-                // .env files
-                if ($config_file === '.env') {
-                    if (preg_match('/DB_HOST=(.*)/', $content, $matches)) {
-                        if (empty($detected['host']) || $detected['confidence']['host'] !== 'high') {
-                            $detected['host'] = trim($matches[1]);
-                            $detected['confidence']['host'] = 'medium';
-                            $detected['sources'][] = '.env file';
-                        }
-                    }
-                    if (preg_match('/DB_DATABASE=(.*)/', $content, $matches)) {
-                        if (empty($detected['database']) || $detected['confidence']['database'] !== 'high') {
-                            $detected['database'] = trim($matches[1]);
-                            $detected['confidence']['database'] = 'medium';
-                        }
-                    }
-                    if (preg_match('/DB_USERNAME=(.*)/', $content, $matches)) {
-                        if (empty($detected['username']) || $detected['confidence']['username'] !== 'high') {
-                            $detected['username'] = trim($matches[1]);
-                            $detected['confidence']['username'] = 'medium';
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Method 4: Generate smart defaults if still empty
-    if (empty($detected['database'])) {
-        $detected['database'] = $domain_name . '_contact_form';
-        $detected['confidence']['database'] = 'low';
-        $detected['sources'][] = 'Generated default';
-    }
-
-    if (empty($detected['username'])) {
-        $detected['username'] = $domain_name;
-        $detected['confidence']['username'] = 'low';
-        $detected['sources'][] = 'Generated default';
-    }
-
-    return $detected;
-}
-
-function generatePreliminaryConfig($db_credentials) {
-    $config_content = "<?php\n";
-    $config_content .= "/**\n";
-    $config_content .= " * GlowHost Contact Form System - Smart-Detected Configuration\n";
-    $config_content .= " * Generated: " . date('Y-m-d H:i:s') . "\n";
-    $config_content .= " * \n";
-    $config_content .= " * IMPORTANT: These settings were automatically detected.\n";
-    $config_content .= " * Please verify them before proceeding with installation.\n";
-    $config_content .= " */\n\n";
-
-    $config_content .= "// Database Configuration - Smart Detected\n";
-    $config_content .= "define('DB_HOST', '" . addslashes($db_credentials['host']) . "');\n";
-    $config_content .= "define('DB_NAME', '" . addslashes($db_credentials['database']) . "');\n";
-    $config_content .= "define('DB_USER', '" . addslashes($db_credentials['username']) . "');\n";
-    $config_content .= "define('DB_PASS', '" . addslashes($db_credentials['password']) . "');\n\n";
-
-    $config_content .= "// Detection Metadata\n";
-    $config_content .= "define('CONFIG_GENERATED', true);\n";
-    $config_content .= "define('CONFIG_GENERATION_TIME', '" . date('Y-m-d H:i:s') . "');\n";
-    $config_content .= "define('HOSTING_TYPE', '" . $db_credentials['hosting_type'] . "');\n\n";
-
-    $config_content .= "// Detection Confidence Levels\n";
-    $config_content .= "define('DB_HOST_CONFIDENCE', '" . ($db_credentials['confidence']['host'] ?? 'low') . "');\n";
-    $config_content .= "define('DB_NAME_CONFIDENCE', '" . ($db_credentials['confidence']['database'] ?? 'low') . "');\n";
-    $config_content .= "define('DB_USER_CONFIDENCE', '" . ($db_credentials['confidence']['username'] ?? 'low') . "');\n";
-    $config_content .= "define('DB_PASS_CONFIDENCE', '" . ($db_credentials['confidence']['password'] ?? 'low') . "');\n\n";
-
-    $config_content .= "// Detection Sources\n";
-    $config_content .= "define('DETECTION_SOURCES', '" . implode(', ', $db_credentials['sources']) . "');\n\n";
-
-    $config_content .= "// System Configuration\n";
-    $config_content .= "define('SITE_URL', '" . getSiteUrl() . "');\n";
-    $config_content .= "define('ADMIN_URL', '" . getSiteUrl() . "/admin');\n";
-    $config_content .= "define('SYSTEM_VERSION', '" . APP_VERSION . "');\n";
-
-    return $config_content;
-}
-
-function getSiteUrl() {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $path = dirname($_SERVER['SCRIPT_NAME'] ?? '');
-    return rtrim($protocol . $host . $path, '/');
-}
-
 // Process download request if system is qualified
 $download_result = ['success' => false, 'message' => ''];
 if ($system_qualified && isset($_GET['download']) && $_GET['download'] === 'installer') {
     $download = downloadFile(INSTALLER_URL, 'install.php');
-
-    if ($download['success']) {
-        // Smart detection and preliminary config generation
-        $detected_credentials = detectDatabaseCredentials();
-        $config_content = generatePreliminaryConfig($detected_credentials);
-
-        $config_saved = @file_put_contents('config.php', $config_content);
-
-        if ($config_saved) {
-            $confidence_summary = [];
-            foreach (['host', 'database', 'username', 'password'] as $field) {
-                $conf = $detected_credentials['confidence'][$field] ?? 'low';
-                if ($conf === 'high') $confidence_summary[] = "✅ $field";
-                elseif ($conf === 'medium') $confidence_summary[] = "⚠️ $field";
-                else $confidence_summary[] = "❓ $field";
-            }
-
-            $download_result = [
-                'success' => true,
-                'message' => 'Installer downloaded successfully with smart database detection! ' .
-                           '<br><strong>Auto-detected:</strong> ' . implode(', ', $confidence_summary) .
-                           '<br><strong>Sources:</strong> ' . implode(', ', $detected_credentials['sources']) .
-                           '<br><br><a href="install.php">🚀 Click here to run the smart installer</a> ' .
-                           '<em>(database settings will be pre-filled)</em>'
-            ];
-        } else {
-            $download_result = [
-                'success' => true,
-                'message' => 'Installer downloaded successfully. <a href="install.php">Click here to run the installer</a>. ' .
-                           '<em>(Smart detection unavailable - you\'ll need to enter database credentials manually.)</em>'
-            ];
-        }
-    } else {
-        $download_result = [
-            'success' => false,
-            'message' => 'Failed to download installer: ' . $download['error']
-        ];
-    }
+    $download_result = [
+        'success' => $download['success'],
+        'message' => $download['success']
+            ? 'Installer downloaded successfully. <a href="install.php">Click here to run the installer</a>.'
+            : 'Failed to download installer: ' . $download['error']
+    ];
 }
 // Create phpinfo.php for extra diagnostics
 deployPhpInfo();
@@ -862,7 +640,7 @@ deployPhpInfo();
             <div class="action-container">
                 <?php if ($system_qualified): ?>
                     <div>
-                        <h3>Choose Your Installation Method:</h3><div style="margin: 1rem 0; padding: 1rem; background: #f3f4f6; border-radius: 8px;"><p><strong>🎯 Recommended: Download Installer</strong> - Downloads directly to your server (automatic)</p><p><strong>💾 Alternative: Direct Download</strong> - Downloads to your computer (manual upload required)</p></div><p>Or use this command to download manually:</p>
+                        <p>Run this command to download the installer:</p>
                         <div class="command-box">wget <?php echo INSTALLER_URL; ?> -O install.php</div>
                         <p>Then visit <a href="install.php">install.php</a> in your browser</p>
                     </div>
