@@ -923,7 +923,7 @@ if (isset($_GET["logout"])) {
         }
     }
 
-    public static function getSiteUrl() {
+    private static function getSiteUrl() {
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $path = dirname($_SERVER['SCRIPT_NAME'] ?? '');
@@ -1013,46 +1013,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'intelligent_result' => $intelligent_result
                 ]);
             }
-            break;
-
-        case 'update_config':
-            $host = $_POST['db_host'] ?? 'localhost';
-            $username = $_POST['db_username'] ?? '';
-            $password = $_POST['db_password'] ?? '';
-            $database = $_POST['db_name'] ?? '';
-
-            // Update config.php with new values
-            $config_content = "<?php\n";
-            $config_content .= "/**\n";
-            $config_content .= " * GlowHost Contact Form System - Updated Configuration\n";
-            $config_content .= " * Last Updated: " . date('Y-m-d H:i:s') . "\n";
-            $config_content .= " * \n";
-            $config_content .= " * IMPORTANT: These settings were modified by user during installation.\n";
-            $config_content .= " */\n\n";
-
-            $config_content .= "// Database Configuration - User Modified\n";
-            $config_content .= "define('DB_HOST', '" . addslashes($host) . "');\n";
-            $config_content .= "define('DB_NAME', '" . addslashes($database) . "');\n";
-            $config_content .= "define('DB_USER', '" . addslashes($username) . "');\n";
-            $config_content .= "define('DB_PASS', '" . addslashes($password) . "');\n\n";
-
-            $config_content .= "// Configuration Metadata\n";
-            $config_content .= "define('CONFIG_GENERATED', true);\n";
-            $config_content .= "define('CONFIG_UPDATED', true);\n";
-            $config_content .= "define('CONFIG_UPDATE_TIME', '" . date('Y-m-d H:i:s') . "');\n\n";
-
-            $config_content .= "// System Configuration\n";
-            $site_url = AdminGenerator::getSiteUrl();
-            $config_content .= "define('SITE_URL', '" . $site_url . "');\n";
-            $config_content .= "define('ADMIN_URL', '" . $site_url . "/admin');\n";
-            $config_content .= "define('SYSTEM_VERSION', '" . INSTALLER_VERSION . "');\n";
-
-            $success = @file_put_contents('config.php', $config_content);
-
-            echo json_encode([
-                'success' => $success !== false,
-                'message' => $success ? 'Configuration updated' : 'Failed to update configuration'
-            ]);
             break;
 
         case 'create_admin':
@@ -1159,38 +1119,6 @@ $current_step = $wizard->getCurrentStep();
 // Validate step
 if (!$wizard->isValidStep($current_step)) {
     $current_step = 1;
-}
-
-// Load smart-detected database credentials if available
-$smart_detected = null;
-$config_exists = false;
-if (file_exists('config.php')) {
-    $config_exists = true;
-    try {
-        // Safely include the config file
-        include_once 'config.php';
-
-        if (defined('CONFIG_GENERATED') && CONFIG_GENERATED) {
-            $smart_detected = [
-                'host' => defined('DB_HOST') ? DB_HOST : 'localhost',
-                'database' => defined('DB_NAME') ? DB_NAME : '',
-                'username' => defined('DB_USER') ? DB_USER : '',
-                'password' => defined('DB_PASS') ? DB_PASS : '',
-                'confidence' => [
-                    'host' => defined('DB_HOST_CONFIDENCE') ? DB_HOST_CONFIDENCE : 'low',
-                    'database' => defined('DB_NAME_CONFIDENCE') ? DB_NAME_CONFIDENCE : 'low',
-                    'username' => defined('DB_USER_CONFIDENCE') ? DB_USER_CONFIDENCE : 'low',
-                    'password' => defined('DB_PASS_CONFIDENCE') ? DB_PASS_CONFIDENCE : 'low'
-                ],
-                'sources' => defined('DETECTION_SOURCES') ? DETECTION_SOURCES : 'Unknown',
-                'hosting_type' => defined('HOSTING_TYPE') ? HOSTING_TYPE : 'unknown',
-                'generated_time' => defined('CONFIG_GENERATION_TIME') ? CONFIG_GENERATION_TIME : 'Unknown'
-            ];
-        }
-    } catch (Exception $e) {
-        // Config file exists but couldn't be loaded safely
-        $smart_detected = null;
-    }
 }
 ?>
 <!DOCTYPE html>
@@ -1681,50 +1609,6 @@ if (file_exists('config.php')) {
             margin: 12px 0;
             overflow-x: auto;
         }
-
-        /* Confidence Indicators */
-        .confidence-indicator {
-            font-size: 12px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 8px;
-            font-weight: normal;
-        }
-
-        .confidence-high {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .confidence-medium {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .confidence-low {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        /* Countdown Container */
-        #countdown-container {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-        }
-
-        .btn-error {
-            background: #dc2626;
-            color: white;
-            border: none;
-        }
-
-        .btn-error:hover {
-            background: #b91c1c;
-        }
     </style>
 </head>
 <body>
@@ -1775,117 +1659,98 @@ if (file_exists('config.php')) {
                 </div>
             </div>
 
-            <!-- Step 2: Smart Database Detection + Pre-filled Setup -->
+            <!-- Step 2: Fully Automated Database Setup -->
             <div class="step-content <?php echo $current_step === 2 ? 'active' : ''; ?>" id="step-2">
-                <div class="step-title">🔍 Smart Database Detection</div>
+                <div class="step-title">🤖 Fully Automated Database Setup</div>
                 <div class="step-description">
-                    <?php if ($smart_detected): ?>
-                        <strong>Great news!</strong> We've automatically detected your database settings. Review them below and we'll proceed automatically in <span id="countdown">10</span> seconds, or click "STOP" to make changes.
-                    <?php else: ?>
-                        Configure your MySQL database connection. The installer will automatically create the database and install required tables.
-                    <?php endif; ?>
+                    <strong>Zero Configuration Required:</strong> Our installer will automatically detect your hosting environment and create everything for you. No forms to fill out, no credentials to enter - just watch the magic happen!
                 </div>
 
-                <?php if ($smart_detected): ?>
-                <!-- Smart Detection Results -->
-                <div class="message success" style="display: block; margin: 20px 0;">
-                    🎯 <strong>Auto-detected from:</strong> <?php echo htmlspecialchars($smart_detected['sources']); ?><br>
-                    <strong>Generated:</strong> <?php echo htmlspecialchars($smart_detected['generated_time']); ?><br>
-                    <strong>Hosting type:</strong> <?php echo ucfirst($smart_detected['hosting_type']); ?>
+                <div class="message info" style="display: block;">
+                    🎯 <strong>True Automation:</strong> Unlike other installers that require manual database creation, ours handles absolutely everything automatically - just like enterprise software should.
                 </div>
 
-                <!-- Countdown Display -->
-                <div id="countdown-container" style="background: #f0fdf4; border: 2px solid #bbf7d0; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                    <h3 style="margin: 0 0 10px 0; color: #15803d;">⏱️ Auto-proceeding in <span id="countdown-display">10</span> seconds</h3>
-                    <p style="margin: 0 0 15px 0; color: #166534;">We'll use the detected settings below. Click "STOP" if you need to make changes.</p>
-                    <button type="button" class="btn btn-error" onclick="stopCountdown()" id="stop-btn" style="background: #dc2626; padding: 10px 30px;">
-                        🛑 STOP - Let me review
-                    </button>
-                </div>
-                <?php endif; ?>
-
-                <!-- Database Configuration Form (Pre-filled if detected) -->
-                <form id="database-form">
-                    <div class="form-group">
-                        <label class="form-label" for="db_host">Database Host
-                        <?php if ($smart_detected && isset($smart_detected['confidence']['host'])): ?>
-                            <span class="confidence-indicator confidence-<?php echo $smart_detected['confidence']['host']; ?>">
-                                (<?php echo ucfirst($smart_detected['confidence']['host']); ?> confidence)
-                            </span>
-                        <?php endif; ?>
-                        </label>
-                        <input type="text" class="form-input" id="db_host" name="db_host"
-                               value="<?php echo $smart_detected ? htmlspecialchars($smart_detected['host']) : 'localhost'; ?>" required>
-                        <div class="form-help">Usually 'localhost' for shared hosting</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="db_name">Database Name
-                        <?php if ($smart_detected && isset($smart_detected['confidence']['database'])): ?>
-                            <span class="confidence-indicator confidence-<?php echo $smart_detected['confidence']['database']; ?>">
-                                (<?php echo ucfirst($smart_detected['confidence']['database']); ?> confidence)
-                            </span>
-                        <?php endif; ?>
-                        </label>
-                        <input type="text" class="form-input" id="db_name" name="db_name"
-                               value="<?php echo $smart_detected ? htmlspecialchars($smart_detected['database']) : ''; ?>" required>
-                        <div class="form-help">
-                            <?php if ($smart_detected && $smart_detected['confidence']['database'] === 'low'): ?>
-                                ⚠️ This was auto-generated. You may need to create this database in cPanel first.
-                            <?php else: ?>
-                                The installer will create this database if it doesn't exist
-                            <?php endif; ?>
+                <!-- Auto-Setup Progress Display -->
+                <div id="auto-setup-progress" style="display: none;">
+                    <div class="progress-steps">
+                        <h4>🔄 Automatic Database Setup in Progress</h4>
+                        <div id="setup-steps">
+                            <div class="progress-step" id="step-detect">
+                                <span class="step-icon">🔍</span>
+                                <span>Detecting hosting environment...</span>
+                            </div>
+                            <div class="progress-step" id="step-credentials">
+                                <span class="step-icon">🔑</span>
+                                <span>Discovering database access...</span>
+                            </div>
+                            <div class="progress-step" id="step-generate">
+                                <span class="step-icon">⚡</span>
+                                <span>Generating database and user...</span>
+                            </div>
+                            <div class="progress-step" id="step-create">
+                                <span class="step-icon">🏗️</span>
+                                <span>Creating database automatically...</span>
+                            </div>
+                            <div class="progress-step" id="step-verify">
+                                <span class="step-icon">✅</span>
+                                <span>Verifying setup...</span>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="db_username">Username
-                        <?php if ($smart_detected && isset($smart_detected['confidence']['username'])): ?>
-                            <span class="confidence-indicator confidence-<?php echo $smart_detected['confidence']['username']; ?>">
-                                (<?php echo ucfirst($smart_detected['confidence']['username']); ?> confidence)
-                            </span>
-                        <?php endif; ?>
-                        </label>
-                        <input type="text" class="form-input" id="db_username" name="db_username"
-                               value="<?php echo $smart_detected ? htmlspecialchars($smart_detected['username']) : ''; ?>" required>
-                        <div class="form-help">Your database username from hosting panel</div>
-                    </div>
+                <!-- Results Display -->
+                <div id="auto-setup-results"></div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="db_password">Password
-                        <?php if ($smart_detected && isset($smart_detected['confidence']['password'])): ?>
-                            <span class="confidence-indicator confidence-<?php echo $smart_detected['confidence']['password']; ?>">
-                                (<?php echo ucfirst($smart_detected['confidence']['password']); ?> confidence)
-                            </span>
-                        <?php endif; ?>
-                        </label>
-                        <input type="password" class="form-input" id="db_password" name="db_password"
-                               value="<?php echo $smart_detected ? htmlspecialchars($smart_detected['password']) : ''; ?>">
-                        <div class="form-help">
-                            <?php if ($smart_detected && empty($smart_detected['password'])): ?>
-                                ⚠️ Password not detected - please enter your database password
-                            <?php else: ?>
-                                Your database password from hosting panel
-                            <?php endif; ?>
+                <!-- Advanced Options (Collapsed by Default) -->
+                <details style="margin: 20px 0; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px;">
+                    <summary style="cursor: pointer; font-weight: 500; color: var(--primary);">
+                        ⚙️ Advanced Database Permissions (Optional)
+                    </summary>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 6px;">
+                        <p style="margin-bottom: 15px; color: #6b7280; font-size: 14px;">
+                            By default, we'll grant full database permissions (recommended). Only change this if you have specific security requirements.
+                        </p>
+
+                        <div class="checkbox">
+                            <input type="checkbox" id="use_custom_permissions" />
+                            <label for="use_custom_permissions">Customize database permissions (advanced users)</label>
+                        </div>
+
+                        <div id="custom-permissions" style="display: none; margin-top: 15px; padding: 15px; border: 1px solid #d1d5db; border-radius: 6px;">
+                            <h5 style="margin-bottom: 10px;">Select Database Permissions:</h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                                <div class="checkbox"><input type="checkbox" id="perm_select" checked><label for="perm_select">SELECT</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_insert" checked><label for="perm_insert">INSERT</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_update" checked><label for="perm_update">UPDATE</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_delete" checked><label for="perm_delete">DELETE</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_create" checked><label for="perm_create">CREATE</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_drop" checked><label for="perm_drop">DROP</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_alter" checked><label for="perm_alter">ALTER</label></div>
+                                <div class="checkbox"><input type="checkbox" id="perm_index" checked><label for="perm_index">INDEX</label></div>
+                            </div>
                         </div>
                     </div>
+                </details>
 
-                    <?php if (!$smart_detected): ?>
-                    <button type="button" class="btn btn-outline" onclick="testDatabase()">
-                        Test Connection
-                    </button>
-                    <?php endif; ?>
-                </form>
-
-                <div id="database-messages"></div>
+                <!-- Manual Fallback (Only Shown If Automation Fails) -->
+                <div id="manual-fallback" style="display: none;">
+                    <div class="manual-instructions">
+                        <h4>⚙️ Manual Setup Required</h4>
+                        <p>Automatic setup couldn't complete due to hosting restrictions. Here are the exact steps:</p>
+                        <div id="manual-steps"></div>
+                    </div>
+                </div>
 
                 <div class="actions">
                     <button class="btn btn-secondary" onclick="previousStep(2)">
                         ← Back
                     </button>
-                    <button class="btn btn-primary" id="next-step-2" onclick="proceedWithDatabase()"
-                            <?php echo $smart_detected ? '' : 'disabled'; ?>>
-                        <?php echo $smart_detected ? 'Proceed with Smart Settings' : 'Create Database & Install Tables'; ?> →
+                    <button class="btn btn-success" id="start-auto-setup" onclick="startAutomaticDatabaseSetup()">
+                        🚀 Start Automatic Setup
+                    </button>
+                    <button class="btn btn-primary" id="next-step-2" onclick="nextStep(2)" disabled style="display: none;">
+                        Continue to Admin Setup →
                     </button>
                 </div>
             </div>
@@ -2004,15 +1869,9 @@ if (file_exists('config.php')) {
     <script>
         const csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
 
-        let countdownTimer = null;
-        let countdownValue = 10;
-
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('step-1').classList.contains('active')) {
                 runEnvironmentChecks();
-            }
-            if (document.getElementById('step-2').classList.contains('active')) {
-                startSmartCountdown();
             }
             if (document.getElementById('step-4').classList.contains('active')) {
                 installSystem();
@@ -2036,64 +1895,7 @@ if (file_exists('config.php')) {
 
                 observer.observe(installerHeader);
             }
-
-            // Monitor form changes to update config
-            const formInputs = document.querySelectorAll('#database-form input');
-            formInputs.forEach(input => {
-                input.addEventListener('change', updateConfigFile);
-            });
         });
-
-        function startSmartCountdown() {
-            const countdownContainer = document.getElementById('countdown-container');
-            if (!countdownContainer) return; // No smart detection, skip countdown
-
-            countdownValue = 10;
-            updateCountdownDisplay();
-
-            countdownTimer = setInterval(() => {
-                countdownValue--;
-                updateCountdownDisplay();
-
-                if (countdownValue <= 0) {
-                    clearInterval(countdownTimer);
-                    proceedWithDatabase();
-                }
-            }, 1000);
-        }
-
-        function updateCountdownDisplay() {
-            const displays = document.querySelectorAll('#countdown, #countdown-display');
-            displays.forEach(display => {
-                if (display) display.textContent = countdownValue;
-            });
-        }
-
-        function stopCountdown() {
-            if (countdownTimer) {
-                clearInterval(countdownTimer);
-                countdownTimer = null;
-            }
-
-            const countdownContainer = document.getElementById('countdown-container');
-            if (countdownContainer) {
-                countdownContainer.style.display = 'none';
-            }
-
-            // Enable manual testing
-            const testButton = document.createElement('button');
-            testButton.type = 'button';
-            testButton.className = 'btn btn-outline';
-            testButton.onclick = testDatabase;
-            testButton.textContent = 'Test Connection';
-
-            const form = document.getElementById('database-form');
-            if (form) {
-                form.appendChild(testButton);
-            }
-
-            showMessage('⏸️ Countdown stopped. Please review and test your database settings.', 'info', 'database-messages');
-        }
 
         async function runEnvironmentChecks() {
             try {
@@ -2321,60 +2123,6 @@ if (file_exists('config.php')) {
                 }
             } catch (error) {
                 showMessage('❌ Connection test failed: ' + error.message, 'error', 'database-messages');
-            }
-        }
-
-        async function proceedWithDatabase() {
-            // Clear any existing countdown
-            if (countdownTimer) {
-                clearInterval(countdownTimer);
-                countdownTimer = null;
-            }
-
-            // Update config file with current form values
-            await updateConfigFile();
-
-            // Proceed with intelligent database setup
-            const form = document.getElementById('database-form');
-            const formData = new FormData(form);
-            formData.append('action', 'intelligent_database_setup');
-            formData.append('csrf_token', csrfToken);
-
-            try {
-                showMessage('🔄 Setting up database with smart-detected settings...', 'info', 'database-messages');
-
-                const response = await fetch('', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-
-                if (result.final_database) {
-                    await installDatabaseWithResults(result);
-                } else {
-                    showMessage('❌ Database setup failed. Please check your credentials and try again.', 'error', 'database-messages');
-                }
-
-            } catch (error) {
-                showMessage('❌ Database setup failed: ' + error.message, 'error', 'database-messages');
-            }
-        }
-
-        async function updateConfigFile() {
-            const form = document.getElementById('database-form');
-            const formData = new FormData(form);
-            formData.append('action', 'update_config');
-            formData.append('csrf_token', csrfToken);
-
-            try {
-                await fetch('', {
-                    method: 'POST',
-                    body: formData
-                });
-                // Config updated silently in background
-            } catch (error) {
-                console.warn('Config update failed:', error);
             }
         }
 
