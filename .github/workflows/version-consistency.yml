@@ -1,0 +1,109 @@
+name: 🔒 Bulletproof Version Consistency Check
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  version-consistency:
+    runs-on: ubuntu-latest
+    name: 🔍 Validate Version Consistency
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📦 Install dependencies
+        run: bun install
+
+      - name: 🔍 Run comprehensive version validation
+        run: bun run validate-versions
+
+      - name: 🧪 Test version sync functionality
+        run: |
+          echo "Testing version sync script..."
+          # Create backup of current files
+          cp installer.php installer.php.backup
+          cp src/components/layout/MainLayout.tsx src/components/layout/MainLayout.tsx.backup
+
+          # Run version sync
+          bun run version-sync
+
+          # Validate sync worked correctly
+          bun run validate-versions
+
+          # Restore original files
+          mv installer.php.backup installer.php
+          mv src/components/layout/MainLayout.tsx.backup src/components/layout/MainLayout.tsx
+
+          echo "Version sync test completed successfully!"
+
+      - name: 🔍 Check for version drift in built files
+        run: |
+          echo "Checking built files for version consistency..."
+          bun run build
+
+          # Extract version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Master version: $VERSION"
+
+          # Check built static files for any hardcoded versions
+          find out/ -name "*.html" -o -name "*.js" -o -name "*.css" | xargs grep -l "version\|Version" | while read file; do
+            echo "Checking $file for version references..."
+            if grep -i "version.*[0-9]\+\.[0-9]\+\.[0-9]\+" "$file" | grep -v "$VERSION"; then
+              echo "⚠️  WARNING: Found potential version reference in $file that doesn't match $VERSION"
+              grep -n -i "version.*[0-9]\+\.[0-9]\+\.[0-9]\+" "$file" || true
+            fi
+          done
+
+      - name: 📋 Generate version report
+        if: always()
+        run: |
+          echo "## 📊 Version Consistency Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          VERSION=$(node -p "require('./package.json').version")
+          echo "**Master Version:** \`$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 📁 File Version Status" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Status | Current Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|---------------|" >> $GITHUB_STEP_SUMMARY
+
+          # Check installer.php
+          INSTALLER_VERSION=$(grep "INSTALLER_VERSION" installer.php | head -1 | grep -o "'[^']*'" | tr -d "'")
+          if [ "$INSTALLER_VERSION" = "$VERSION" ]; then
+            echo "| \`installer.php\` | ✅ | \`$INSTALLER_VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| \`installer.php\` | ❌ | \`$INSTALLER_VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check MainLayout.tsx
+          CONTACT_VERSION=$(grep "Sales Contact Form Version:" src/components/layout/MainLayout.tsx | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+[^<]*" | head -1)
+          if [ "$CONTACT_VERSION" = "$VERSION" ]; then
+            echo "| \`MainLayout.tsx\` | ✅ | \`$CONTACT_VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| \`MainLayout.tsx\` | ❌ | \`$CONTACT_VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  prevent-merge-on-failure:
+    runs-on: ubuntu-latest
+    needs: version-consistency
+    if: failure()
+    steps:
+      - name: 🚫 Block merge on version inconsistency
+        run: |
+          echo "❌ BLOCKING MERGE: Version consistency check failed!"
+          echo "All version references must match package.json before merging."
+          echo "Run 'bun run version-sync' to fix version inconsistencies."
+          exit 1

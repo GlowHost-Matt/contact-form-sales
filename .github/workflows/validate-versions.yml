@@ -1,0 +1,50 @@
+name: Version Consistency Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-versions:
+    runs-on: ubuntu-latest
+    name: Validate All Versions Match
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+
+    - name: Install dependencies
+      run: bun install
+
+    - name: Check version consistency
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo "Master version from package.json: $VERSION"
+
+        # Check installer.php
+        if ! grep -q "INSTALLER_VERSION.*$VERSION" installer.php; then
+          echo "ERROR: installer.php version mismatch"
+          echo "Expected: $VERSION"
+          echo "Found: $(grep 'INSTALLER_VERSION' installer.php)"
+          exit 1
+        fi
+
+        # Check contact form
+        if ! grep -q "Sales Contact Form Version: $VERSION" src/components/layout/MainLayout.tsx; then
+          echo "ERROR: Contact form version mismatch"
+          echo "Expected: $VERSION"
+          echo "Found: $(grep 'Sales Contact Form Version:' src/components/layout/MainLayout.tsx)"
+          exit 1
+        fi
+
+        echo "SUCCESS: All versions consistent at $VERSION"
+
+    - name: Test version sync
+      run: |
+        node scripts/version-sync.js
+        echo "Version sync completed successfully"
