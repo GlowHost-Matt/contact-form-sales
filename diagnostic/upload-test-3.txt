@@ -1,3 +1,0 @@
-Multi-file upload test #3
-Created: 2025-08-12
-Purpose: Verify batch upload functionality
