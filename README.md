@@ -1,102 +1,66 @@
-# GlowHost Contact Form System
-Professional contact form with React.js frontend, admin interface, and comprehensive testing workflow.
+# Modular Installer v1 - Permanent Backup
 
-## 🏗️ **MAJOR MILESTONE: Version 50 - Phase 5 Complete**
+**Milestone Date:** August 14, 2025
+**Status:** Stable, Ready for Deployment
 
-**🎯 MONUMENTAL ARCHITECTURAL CHANGE - MODULAR SYSTEM IMPLEMENTED**
+## 🚨 Insurance Policy: Your Permanent Backup
 
-**📅 Milestone Date:** August 8, 2025
-**⚡ Status:** FULLY OPERATIONAL - ALL 38 TESTS PASSING
+This branch (`modular-installer-v1`) contains a complete, working, and modular version of the PHP installer. It was created to secure our progress and provide a reliable recovery point.
 
-### 🔄 **CRITICAL REVERSION POINT:**
-This version represents a stable, fully-tested state with major architectural improvements.
-**If future changes break the system, revert to Version 50.**
+If our session times out, the AI agent changes, or any other issue occurs, you can use the files in this branch to instantly restore the installer to this exact known-good state.
 
-See `PHASE-5-MILESTONE.md` for complete reversion instructions and verification details.
+### How to Download This Backup
 
-## 🚨 CRITICAL WORKFLOW RULE
+You can download a complete copy of these files at any time.
 
-**⚠️ AI MUST ALWAYS RUN AUTOMATED TESTS BEFORE ASKING HUMANS TO TEST**
+1.  **Go to Your GitHub Repository:**
+    *   Navigate to this URL in your browser:
+        **https://github.com/GlowHost-Matt/contact-form-sales**
+
+2.  **Switch to the Backup Branch:**
+    *   On the repository page, you will see a button that likely says "**`main`**". Click on this button.
+    *   A dropdown menu will appear listing all branches. Select the new branch: **`modular-installer-v1`**.
+
+3.  **Download the ZIP File:**
+    *   After selecting the branch, the page will refresh. Now, look for a green button that says **"<> Code"**.
+    *   Click the green "**<> Code**" button.
+    *   In the dropdown menu that appears, click the last option: **"Download ZIP"**.
+
+This will download a file named `contact-form-sales-modular-installer-v1.zip` to your computer. **This ZIP file is your insurance policy.** It contains the exact, working code and instructions we've agreed upon, independent of me or this chat session.
+
+## 🏛️ System Architecture
+
+This installer uses a clean, two-file modular system to separate logic from presentation.
+
+### 1. `logic.php` (The "Brain")
+*   **Purpose:** This file contains all the PHP code and business logic. It does not produce any HTML output itself.
+*   **Responsibilities:**
+    *   Performs "Pre-Flight Checks" to ensure the server environment is compatible (checks PHP version, required extensions).
+    *   Dynamically and safely detects the system username from the server environment to create a database prefix (e.g., `contactglowhost_`).
+    *   Holds all functions needed for the installation process.
+
+### 2. `install.php` (The "Face")
+*   **Purpose:** This is the user-facing file that you visit in your browser.
+*   **Responsibilities:**
+    *   Its very first action is to `require_once 'logic.php'`, which gives it access to all the logic and variables from the "brain."
+    *   It contains all the HTML and CSS to create the user interface of the installer.
+    *   It displays the results of the pre-flight checks.
+    *   It displays the database configuration form and uses a simple `echo` to pre-fill the fields with the prefix detected by `logic.php`.
+
+## 🚀 How to Deploy This Installer to Your Server
+
+You can deploy this installer at any time by running a single command in your server's SSH terminal.
+
+1.  **Log into your server** and navigate to your web root (`~/public_html`).
+2.  **Run the command below.** This command will:
+    *   Create a dated backup of your current `public_html` directory.
+    *   Wipe the directory clean.
+    *   Download the `logic.php` and `install.php` files directly from this GitHub branch.
+    *   Set the correct permissions.
 
 ```bash
-# MANDATORY before any human verification:
-bun run pre-human-test
+cd ~/public_html && backup_dir=~/backups/modular-installer-$(date +%F_%H-%M-%S) && mkdir -p "$backup_dir" && (shopt -s dotglob; mv * "$backup_dir"/ 2>/dev/null || true) && curl -L -o logic.php https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/modular-installer-v1/logic.php && curl -L -o install.php https://raw.githubusercontent.com/GlowHost-Matt/contact-form-sales/modular-installer-v1/install.php && chmod 644 logic.php install.php && echo "Modular installer deployed successfully."
 ```
 
-## 🚀 Quick Start
-
-```bash
-# 1. Install dependencies
-bun install
-
-# 2. Start development server
-bun run start
-
-# 3. BEFORE asking humans to test anything:
-bun run pre-human-test
-```
-
-## 🔧 Development Workflow
-
-### ✅ Proper Development Sequence:
-1. **Make code changes**
-2. **Run automated tests**: `bun run pre-human-test`
-3. **Fix any failing tests**
-4. **ONLY THEN** ask humans for UX verification
-
-### ❌ Never Do This:
-- Ask humans to test without running automated tests first
-- Skip build verification
-- Request manual testing of broken endpoints
-
-## 📍 URLs
-
-- **Development Dashboard**: http://localhost:3000
-- **React.js Frontend**: http://localhost:3000/helpdesk/
-- **Admin Interface**: http://localhost:3000/admin/ (admin/demo123)
-
-## 🧪 Testing Commands
-
-```bash
-bun run test              # Run automated tests only
-bun run pre-human-test    # Full pre-human verification (USE THIS)
-bun run build-frontend    # Build verification only
-bun run full-test         # Complete build + test suite
-```
-
-## 📋 Available Scripts
-
-- `bun run start` - Start development server
-- `bun run test` - Run automated test suite
-- `bun run pre-human-test` - **MANDATORY** pre-human testing
-- `bun run build-frontend` - Build React.js frontend
-- `bun run full-test` - Build + test everything
-
-## 🔒 Workflow Enforcement
-
-This project includes automated workflow enforcement to ensure quality:
-- **6 automated endpoint tests** must pass before human testing
-- **Frontend build verification** ensures compilation success
-- **Workflow compliance checking** prevents regression to bad practices
-
-See `DEVELOPMENT-WORKFLOW.md` for complete workflow specification.
-
-## 🎯 Features
-
-- React.js contact form with TypeScript
-- Admin interface with test data controls
-- Mock PHP API simulation
-- Auto-save form protection
-- Drag & drop file uploads
-- Comprehensive test scenarios
-- Professional development workflow
-
-## 📚 Documentation
-
-- `DEVELOPMENT-WORKFLOW.md` - Complete development workflow rules
-- `.same/todos.md` - Current development progress and tasks
-- Source code comments - Implementation details
-
----
-
-**🚨 Remember: Always run `bun run pre-human-test` before asking for human verification!**
+3.  **Begin Installation:**
+    *   Visit `https://contact.glowhost.com/install.php` in your browser to start the installation process.
